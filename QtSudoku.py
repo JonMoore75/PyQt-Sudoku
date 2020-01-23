@@ -3,16 +3,26 @@ from PyQt5 import QtCore, QtWidgets
 from PyQt5.QtWidgets import QMainWindow, QLabel, QGridLayout, QWidget
 from PyQt5.QtCore import QSize    
 
-from PyQt5.QtGui import QPainter, QBrush, QPen
+from PyQt5.QtGui import QPainter, QBrush, QPen, QCursor, QFont
 
-
+class Cell(QLabel):
+    def __init__(self, value, font, parent):
+        self.cellString = str(value) if value is not 0 else ' '
+        super(QLabel, self).__init__(self.cellString, parent)
+        self.setStyleSheet("background-color: white;")
+        self.setAlignment(QtCore.Qt.AlignCenter)
+        self.setFont(font)
+        
+    def mouseReleaseEvent(self, QMouseEvent):
+        print 'Clicked on '+self.cellString
      
 class SudokuMainWindow(QMainWindow):
     def __init__(self, board):
         super(QMainWindow, self).__init__()
  
-        self.setMinimumSize(QSize(100, 100))    
+        self.setFixedSize(QSize(500, 500))    
         self.setWindowTitle("Simple Sudoku") 
+        self.setStyleSheet("background-color: grey;")
         
         centralWidget = QWidget(self)          
         self.setCentralWidget(centralWidget)   
@@ -22,17 +32,22 @@ class SudokuMainWindow(QMainWindow):
         
         self.CreateBoard(board, gridLayout)
        
-        menu = self.menuBar().addMenu('File')
-        action = menu.addAction('Quit')
-        action.triggered.connect(QtWidgets.QApplication.quit)
+#        menu = self.menuBar().addMenu('File')
+#        action = menu.addAction('Quit')
+#        action.triggered.connect(QtWidgets.QApplication.quit)
         
     def CreateBoard(self, board, gridLayout):
+        cellfont = QFont("Arial", 25, QFont.Bold) 
         for i in range(0,9):
             for j in range(0,9):
-                cellString = str(board[i][j]) if board[i][j] is not 0 else ' '
-                cellLabel = QLabel(cellString, self) 
-                cellLabel.setAlignment(QtCore.Qt.AlignCenter)
+                cellLabel = Cell(board[i][j], cellfont, self)
                 gridLayout.addWidget(cellLabel, i, j) 
+        
+    def mouseReleaseEvent(self, QMouseEvent):
+        my = self.menuBar().height()
+        print('('+str(QMouseEvent.x())+', '+str(QMouseEvent.y()-my)+') \
+              ('+str(self.width())+','+str(self.height())+')')
+
                 
 if __name__ == "__main__":
     def run_app():
