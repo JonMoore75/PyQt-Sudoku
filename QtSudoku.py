@@ -66,6 +66,20 @@ def GetCandidateList(board, i, j):
     
     return set(range(1,10)) - blockValues - rowValues - colValues
 
+def FillSingleCandidates(board, candBoard):
+    """ Fills in any empty cells with single candidate 
+    Copies inputs so not changed by this function."""
+    boardcopy = deepcopy(board)
+    changed = False
+    
+    for i in range(0,9):
+        for j in range(0,9): 
+            if len(candBoard[i][j]) == 1 and board[i][j] == 0:
+                changed = True
+                boardcopy[i][j] = next(iter(candBoard[i][j]))
+    
+    return changed, boardcopy, SolveCandidates(boardcopy)
+
 def SolveCandidates(board):
     """ Takes a Sudoku board (2d 9x9 list of ints with 0 as empty cell) and 
     returns a board that is a 2d 9x9 list of sets.  Each set is the possible 
@@ -212,11 +226,11 @@ class SudokuMainWindow(QMainWindow):
         layout.addWidget(solveButton)
         
         singleCandButton = QPushButton('Fill Single Candidates')
-        singleCandButton.clicked.connect(lambda: self.FillinSingleCandidates(self.currBoard, self.candBoard))
+        singleCandButton.clicked.connect(lambda: self.FillinSingleCandidates())
         layout.addWidget(singleCandButton)
 
         singleCandStepButton = QPushButton('Fill Single Candidates - Step')
-        singleCandStepButton.clicked.connect(lambda: self.FillinSingleCandidatesStep(self.currBoard, self.candBoard))
+        singleCandStepButton.clicked.connect(lambda: self.FillinSingleCandidatesStep())
         layout.addWidget(singleCandStepButton)
           
     def Solve(self):
@@ -230,61 +244,49 @@ class SudokuMainWindow(QMainWindow):
         
         self.boxes[bi][bj].FillinCell(i, j, value)
         
-    def FillinSingleCandidatesStep(self, board, candBoard):
-        """ Look for cells with only 1 candidate and fill them in.
-        Exit if invalid.  Updates the candidates after finished """
-        for i in range(0,9):
-            for j in range(0,9): 
-                if len(candBoard[i][j]) == 1 and board[i][j] == 0:
-                    board[i][j] = next(iter(candBoard[i][j]))
-                    self.FillinCell(i, j, board[i][j])
-                                        
-                    if not CheckValid(board):
-                        print 'Invalid'
-                        return   
-                             
-        self.candBoard = SolveCandidates(board)
-        self.currBoard = board
-                    
+    def UpdateChangedCells(self, prevBoard, prevCandBoard):
+        """ Update the display of changed cells """
         for i in range(0,9):
             for j in range(0,9):
-                if len(candBoard[i][j]) != 1:
+                if prevBoard[i][j] != self.currBoard[i][j]:
+                    self.FillinCell(i, j, self.currBoard[i][j])
+                if len(prevCandBoard[i][j]) != len(self.candBoard[i][j]):
                     candSet = self.candBoard[i][j]
                     bi = i/3
                     bj = j/3
                     self.boxes[bi][bj].UpdateCandidates(i, j, candSet)
-                    
+ 
+        
+    def FillinSingleCandidatesStep(self):
+        """ Look for cells with only 1 candidate and fill them in.
+        Updates the candidates after finished """
+        
+        prevBoard = self.currBoard
+        prevCandBoard = self.candBoard
+        
+        changed, self.currBoard, self.candBoard = FillSingleCandidates(self.currBoard, self.candBoard)
+        self.UpdateChangedCells(prevBoard, prevCandBoard)
+        
+        if not CheckValid(self.currBoard):
+            print 'Invalid'
 
         
-    def FillinSingleCandidates(self, board, candBoard):
+    def FillinSingleCandidates(self):
         """ Look for cells with only 1 candidate and fill them in 
-        Then update candidates and iterate.  Each change check validity.  
-        If not valid then break out to prevent loops. """
-        changes = False
-        for i in range(0,9):
-            for j in range(0,9): 
-                if len(candBoard[i][j]) == 1 and board[i][j] == 0:
-                    changes = True
-                    board[i][j] = next(iter(candBoard[i][j]))
-                    self.FillinCell(i, j, board[i][j])
-                    
-                    if not CheckValid(board):
-                        print 'Invalid'
-                        return
-                    
-        self.candBoard = SolveCandidates(board)
-        self.currBoard = board
+        Then update candidates and iterate until no more changes """
         
-        if changes:
-            self.FillinSingleCandidates(self.currBoard, self.candBoard)
-            
-        for i in range(0,9):
-            for j in range(0,9):
-                if len(candBoard[i][j]) != 1:
-                    candSet = self.candBoard[i][j]
-                    bi = i/3
-                    bj = j/3
-                    self.boxes[bi][bj].UpdateCandidates(i, j, candSet)
+        notdone = True
+        
+        prevBoard = self.currBoard
+        prevCandBoard = self.candBoard
+        
+        while notdone:
+            notdone, self.currBoard, self.candBoard = FillSingleCandidates(self.currBoard, self.candBoard)
+
+        self.UpdateChangedCells(prevBoard, prevCandBoard)
+                    
+        if not CheckValid(self.currBoard):
+            print 'Invalid'
         
     def mouseReleaseEvent(self, QMouseEvent):
         print('('+str(QMouseEvent.x())+', '+str(QMouseEvent.y())+') \
@@ -300,10 +302,6 @@ def run_app(origBoard):
     app = QtWidgets.QApplication(sys.argv)
     mainWin = SudokuMainWindow(origBoard, candBoard)
     mainWin.show()
-    
-    
-    
-#    mainWin.FillinSingleCandidates(currBoard, candBoard)
     
     return app.exec_()
 
