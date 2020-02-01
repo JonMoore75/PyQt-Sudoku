@@ -158,8 +158,38 @@ def SolveCandidates(board):
             else:
                 boardcopy[i][j] = set([board[i][j]])
     return boardcopy
+
+def UnitTests():
+    print '######### Unit Tests #############'
+    testboard = [
+    [7,8,0,4,0,0,1,2,0],
+    [6,0,0,0,7,5,0,0,9],
+    [0,0,0,6,0,1,0,7,8],
+    [0,0,7,0,4,0,2,6,0],
+    [0,0,1,0,5,0,9,3,0],
+    [9,0,4,0,6,0,0,0,5],
+    [0,7,0,3,0,0,0,1,2],
+    [1,2,0,0,0,7,4,0,0],
+    [0,4,9,2,0,6,0,0,7]
+    ]
+    boardcopy = deepcopy(testboard)
+    
+    boardcopy[4][4] = 3    
+    print 'Check valid via Row Duplicate Test. Should be False', CheckValid(boardcopy)
+    
+    boardcopy[4][4] = 7
+    print 'Check valid via Col Duplicate Test. Should be False', CheckValid(boardcopy)
+    
+    boardcopy[4][4] = 5
+    boardcopy[8][8] = 1
+    print 'Check valid via Block Duplicate Test. Should be False', CheckValid(boardcopy)
+    
+    print '######### End Unit Tests #############'
                 
 if __name__ == "__main__":  
+    
+    UnitTests()
+    
     origboard = [
     [7,8,0,4,0,0,1,2,0],
     [6,0,0,0,7,5,0,0,9],
@@ -172,21 +202,8 @@ if __name__ == "__main__":
     [0,4,9,2,0,6,0,0,7]
     ]
     
-    print CheckValid(origboard)
-    
-    boardcopy = deepcopy(origboard)
-    
-    boardcopy[4][4] = 3    
-    print CheckValid(boardcopy)
-    
-    boardcopy[4][4] = 7
-    print CheckValid(boardcopy)
-    
-    boardcopy[4][4] = 5
-    boardcopy[8][8] = 1
-    print CheckValid(boardcopy)
+    print 'Board is valid:', CheckValid(origboard)
     
     boardwCands = SolveCandidates(origboard)
-    print boardwCands
     
     sys.exit(run_app(origboard, boardwCands))
