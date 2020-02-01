@@ -47,7 +47,7 @@ class Cell(QLabel):
         print ('Clicked on cell ('+str(self.i)+','+str(self.j)+'), with value '+self.cellString)
         
 class Box(QLabel):
-    def __init__(self, parent, bi, bj):
+    def __init__(self, parent, board, bi, bj):
         super(QLabel, self).__init__(parent)
         self.setStyleSheet("background-color: lightgrey;")
         self.bi = bi
@@ -85,7 +85,7 @@ class SudokuMainWindow(QMainWindow):
     def CreateBoard(self, board, parent, layout):
         for bi in range(0,3):
             for bj in range(0,3):
-                box = Box(parent, bi, bj)
+                box = Box(parent, board, bi, bj)
                 layout.addWidget(box, bi, bj)  
         
     def mouseReleaseEvent(self, QMouseEvent):
@@ -158,7 +158,7 @@ def SolveCandidates(board):
     return boardcopy
                 
 if __name__ == "__main__":  
-    board = [
+    testboard = [
     [7,8,0,4,0,0,1,2,0],
     [6,0,0,0,7,5,0,0,9],
     [0,0,0,6,0,1,0,7,8],
@@ -170,9 +170,9 @@ if __name__ == "__main__":
     [0,4,9,2,0,6,0,0,7]
     ]
     
-    print CheckValid(board)
+    print CheckValid(testboard)
     
-    boardcopy = deepcopy(board)
+    boardcopy = deepcopy(testboard)
     
     boardcopy[4][4] = 3    
     print CheckValid(boardcopy)
@@ -184,8 +184,7 @@ if __name__ == "__main__":
     boardcopy[8][8] = 1
     print CheckValid(boardcopy)
     
-    boardwCands = SolveCandidates(board)
-    
+    boardwCands = SolveCandidates(testboard)
     print boardwCands
     
-    sys.exit(run_app(board))
+    sys.exit(run_app(testboard))
