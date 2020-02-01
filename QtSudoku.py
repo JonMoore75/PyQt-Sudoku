@@ -97,16 +97,27 @@ class Cell(QLabel):
         self.i = i
         self.j = j
         
-        if strValue == ' ':
-            gridLayoutBox = QGridLayout() 
-            self.setLayout(gridLayoutBox) 
+        if self.cellString == ' ':
+            self.gridLayoutBox = QGridLayout() 
+            self.setLayout(self.gridLayoutBox) 
             for i in range(0,3):
                 for j in range(0,3):
                     candValue = 3*i + j + 1
                     candStr = str(candValue) if candValue in candSet else ' '
                     candLabel = QLabel(candStr, self)
                     candLabel.setFont(candidatefont)
-                    gridLayoutBox.addWidget(candLabel, i, j)            
+                    self.gridLayoutBox.addWidget(candLabel, i, j)
+                    
+    def UpdateValue(self, strValue):
+        if self.cellString == ' ' and strValue != ' ':
+            # Delete all candidate label widgets 
+            for i in reversed(range(self.gridLayoutBox.count())): 
+                self.gridLayoutBox.itemAt(i).widget().setParent(None)
+                
+            self.setText(strValue)
+            self.setStyleSheet('background-color: white; color: darkgrey')
+            self.update()
+        
         
     def mouseReleaseEvent(self, QMouseEvent):
         """ Prints the cell clicked on """
@@ -119,8 +130,8 @@ class Box(QLabel):
         self.bi = bi
         self.bj = bj
                 
-        gridLayoutBox = QGridLayout() 
-        self.setLayout(gridLayoutBox) 
+        self.gridLayoutBox = QGridLayout() 
+        self.setLayout(self.gridLayoutBox) 
         
         for i in range(0,3):
             for j in range(0,3):
@@ -129,7 +140,14 @@ class Box(QLabel):
                 strValue = Value2String(board[ci][cj])
                 candSet = candBoard[ci][cj]
                 cellLabel = Cell(self, strValue, candSet, ci, cj)
-                gridLayoutBox.addWidget(cellLabel, i, j) 
+                self.gridLayoutBox.addWidget(cellLabel, i, j)
+                
+    def FillinCell(self, i, j, value):
+        ci = i - 3*self.bi
+        cj = j - 3*self.bj
+        
+        cell = self.gridLayoutBox.itemAtPosition(ci, cj).widget()
+        cell.UpdateValue(Value2String(value))
      
 class SudokuMainWindow(QMainWindow):
     def __init__(self, board, candBoard):
@@ -151,19 +169,30 @@ class SudokuMainWindow(QMainWindow):
         
     def CreateBoard(self, board, candBoard, parent, layout):
         """ Creates board display with initial board values and candidates """
+        self.boxes = [[None for _ in range(3)] for _ in range(3)]
         for bi in range(0,3):
             for bj in range(0,3):
-                box = Box(parent, board, candBoard, bi, bj)
-                layout.addWidget(box, bi, bj)  
+                self.boxes[bi][bj] = Box(parent, board, candBoard, bi, bj)
+                layout.addWidget(self.boxes[bi][bj], bi, bj)  
+                
+    def FillinCell(self, i, j, value):
+        bi = i/3
+        bj = j/3
+        
+        self.boxes[bi][bj].FillinCell(i, j, value)
         
     def mouseReleaseEvent(self, QMouseEvent):
         print('('+str(QMouseEvent.x())+', '+str(QMouseEvent.y())+') \
               ('+str(self.width())+','+str(self.height())+')')
 ###############################################################################
-        
+#def FillinSingleCandidates(qtWindow, board, candBoard):
+#    for i in range(0,9):
+#        for j in range(0,9): 
+#            if len(candBoard[i][j]) == 1:
+#                if 
 
         
-def run_app(origBoard, candBoard):
+def run_app(origBoard):
     print 'Board is valid:', CheckValid(origboard)
     
     candBoard = SolveCandidates(origBoard)
@@ -171,6 +200,11 @@ def run_app(origBoard, candBoard):
     app = QtWidgets.QApplication(sys.argv)
     mainWin = SudokuMainWindow(origBoard, candBoard)
     mainWin.show()
+    
+    currBoard = deepcopy(origBoard)
+    
+    mainWin.FillinCell(1, 3, 8)
+    
     return app.exec_()
 
 
