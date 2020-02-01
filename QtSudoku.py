@@ -1,7 +1,7 @@
 import sys
 from PyQt5 import QtCore, QtWidgets
 from PyQt5.QtWidgets import QMainWindow, QLabel, QGridLayout, QWidget
-from PyQt5.QtCore import QSize    
+#from PyQt5.QtCore import QSize    
 
 from PyQt5.QtGui import QFont#, QPainter, QBrush, QPen, QCursor
 
@@ -26,11 +26,21 @@ class Cell(QLabel):
         self.setStyleSheet("background-color: white;")
         self.setAlignment(QtCore.Qt.AlignCenter)
         cellfont = QFont("Arial", 45, QFont.Bold) 
-        candidatefont = QFont("Arial", 15)
+        candidatefont = QFont("Arial", 12)
 
         self.setFont(cellfont)
         self.i = i
         self.j = j
+        
+        if strValue == ' ':
+            gridLayoutBox = QGridLayout() 
+            self.setLayout(gridLayoutBox) 
+            for i in range(0,3):
+                for j in range(0,3):
+                    candValue = str(3*i + j + 1)
+                    candLabel = QLabel(candValue, self)
+                    candLabel.setFont(candidatefont)
+                    gridLayoutBox.addWidget(candLabel, i, j)            
         
     def mouseReleaseEvent(self, QMouseEvent):
         print ('Clicked on cell ('+str(self.i)+','+str(self.j)+'), with value '+self.cellString)
@@ -75,12 +85,7 @@ class SudokuMainWindow(QMainWindow):
         for bi in range(0,3):
             for bj in range(0,3):
                 box = Box(parent, bi, bj)
-                layout.addWidget(box, bi, bj) 
-
-#        for i in range(0,9):
-#            for j in range(0,9):
-#                cellLabel = Cell(parent, board[i][j], cellfont, i, j)
-#                layout.addWidget(cellLabel, i, j) 
+                layout.addWidget(box, bi, bj)  
         
     def mouseReleaseEvent(self, QMouseEvent):
         print('('+str(QMouseEvent.x())+', '+str(QMouseEvent.y())+') \
