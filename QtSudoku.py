@@ -84,14 +84,41 @@ def SolveCandidates(board):
     """ Takes a Sudoku board (2d 9x9 list of ints with 0 as empty cell) and 
     returns a board that is a 2d 9x9 list of sets.  Each set is the possible 
     int values. Known values are now sets with 1 item. """
-    boardcopy = deepcopy(board)
+    candBoard = deepcopy(board)
     for i in range(0,9):
         for j in range(0,9):
             if board[i][j] == 0:
-                boardcopy[i][j] = GetCandidateList(board, i, j)
+                candBoard[i][j] = GetCandidateList(board, i, j)
             else:
-                boardcopy[i][j] = set([board[i][j]])
-    return boardcopy
+                candBoard[i][j] = set([board[i][j]])
+    return candBoard
+
+def FindEmpty(board):
+    for i in range(0,9):
+        for j in range(0,9):
+            if board[i][j] == 0:
+                return (i,j)
+    return None
+
+def SolvewBacktrack(board):
+    foundEmpty = FindEmpty(board)
+    
+    if not foundEmpty:
+        return True # Solved!
+    
+    i,j = foundEmpty
+    candSet = GetCandidateList(board, i, j)
+    
+    for cand in iter(candSet):
+        
+        board[i][j] = cand
+        
+        if SolvewBacktrack(board):
+            return True
+        
+        board[i][j] = 0
+        
+    return False
 
 ###############################################################################
 
@@ -233,9 +260,6 @@ class SudokuMainWindow(QMainWindow):
         singleCandStepButton.clicked.connect(lambda: self.FillinSingleCandidatesStep())
         layout.addWidget(singleCandStepButton)
           
-    def Solve(self):
-        """ Placeholder for backtracking solver """
-        pass
                 
     def FillinCell(self, i, j, value):
         """ Will fill in value in a cell if it is empty/unknown """
@@ -256,13 +280,20 @@ class SudokuMainWindow(QMainWindow):
                     bj = j/3
                     self.boxes[bi][bj].UpdateCandidates(i, j, candSet)
  
+    def Solve(self):
+        """ Placeholder for backtracking solver """
+        prevBoard = deepcopy(self.currBoard)
+        
+        SolvewBacktrack(self.currBoard)
+        
+        self.UpdateChangedCells(prevBoard, self.candBoard)
         
     def FillinSingleCandidatesStep(self):
         """ Look for cells with only 1 candidate and fill them in.
         Updates the candidates after finished """
         
-        prevBoard = self.currBoard
-        prevCandBoard = self.candBoard
+        prevBoard = deepcopy(self.currBoard)
+        prevCandBoard = deepcopy(self.candBoard)
         
         changed, self.currBoard, self.candBoard = FillSingleCandidates(self.currBoard, self.candBoard)
         self.UpdateChangedCells(prevBoard, prevCandBoard)
@@ -277,8 +308,8 @@ class SudokuMainWindow(QMainWindow):
         
         notdone = True
         
-        prevBoard = self.currBoard
-        prevCandBoard = self.candBoard
+        prevBoard = deepcopy(self.currBoard)
+        prevCandBoard = deepcopy(self.candBoard)
         
         while notdone:
             notdone, self.currBoard, self.candBoard = FillSingleCandidates(self.currBoard, self.candBoard)
@@ -321,17 +352,16 @@ def UnitTests():
     [1,2,0,0,0,7,4,0,0],
     [0,4,9,2,0,6,0,0,7]
     ]
-    boardcopy = deepcopy(testboard)
     
-    boardcopy[4][4] = 3    
-    print 'Check valid via Row Duplicate Test. Should be False', CheckValid(boardcopy)
+    testboard[4][4] = 3    
+    print 'Check valid via Row Duplicate Test. Should be False', CheckValid(testboard)
     
-    boardcopy[4][4] = 7
-    print 'Check valid via Col Duplicate Test. Should be False', CheckValid(boardcopy)
+    testboard[4][4] = 7
+    print 'Check valid via Col Duplicate Test. Should be False', CheckValid(testboard)
     
-    boardcopy[4][4] = 5
-    boardcopy[8][8] = 1
-    print 'Check valid via Block Duplicate Test. Should be False', CheckValid(boardcopy)
+    testboard[4][4] = 5
+    testboard[8][8] = 1
+    print 'Check valid via Block Duplicate Test. Should be False', CheckValid(testboard)
     
     print '######### End Unit Tests #############'
 
@@ -364,4 +394,4 @@ if __name__ == "__main__":
     [0,7,3,9,0,8,0,0,0],
     [6,0,0,4,5,0,2,0,0]
     ]    
-    sys.exit(run_app(easyboard))
+    sys.exit(run_app(hardboard))
