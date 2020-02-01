@@ -14,11 +14,14 @@ if hasattr(QtCore.Qt, 'AA_UseHighDpiPixmaps'):
     QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_UseHighDpiPixmaps, True)
     
 environ["QT_AUTO_SCREEN_SCALE_FACTOR"] = "1"
+
+def Value2String(value):
+    return str(value) if value is not 0 else ' '
     
 class Cell(QLabel):
-    def __init__(self, parent, value, i, j):
-        self.cellString = str(value) if value is not 0 else ' '
-        super(QLabel, self).__init__(self.cellString, parent)
+    def __init__(self, parent, strValue, i, j):
+        super(QLabel, self).__init__(strValue, parent)
+        self.cellString = strValue
         
         self.setStyleSheet("background-color: white;")
         self.setAlignment(QtCore.Qt.AlignCenter)
@@ -46,7 +49,8 @@ class Box(QLabel):
             for j in range(0,3):
                 ci = bi*3 + i
                 cj = bj*3 + j
-                cellLabel = Cell(self, board[ci][cj], ci, cj)
+                strValue = Value2String(board[ci][cj])
+                cellLabel = Cell(self, strValue, ci, cj)
                 gridLayoutBox.addWidget(cellLabel, i, j) 
      
 class SudokuMainWindow(QMainWindow):
