@@ -8,6 +8,8 @@ from PyQt5.QtGui import QFont#, QPainter, QBrush, QPen, QCursor
 
 from os import environ
 
+###############################################################################
+
 if hasattr(QtCore.Qt, 'AA_EnableHighDpiScaling'):
     QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_EnableHighDpiScaling, True)
 
@@ -15,90 +17,6 @@ if hasattr(QtCore.Qt, 'AA_UseHighDpiPixmaps'):
     QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_UseHighDpiPixmaps, True)
     
 environ["QT_AUTO_SCREEN_SCALE_FACTOR"] = "1"
-
-def Value2String(value):
-    return str(value) if value is not 0 else ' '
-    
-class Cell(QLabel):
-    def __init__(self, parent, strValue, candSet, i, j):
-        super(QLabel, self).__init__(strValue, parent)
-        self.cellString = strValue
-        
-        self.setStyleSheet("background-color: white;")
-        self.setAlignment(QtCore.Qt.AlignCenter)
-        cellfont = QFont("Arial", 45, QFont.Bold) 
-        candidatefont = QFont("Arial", 12)
-
-        self.setFont(cellfont)
-        self.i = i
-        self.j = j
-        
-        if strValue == ' ':
-            gridLayoutBox = QGridLayout() 
-            self.setLayout(gridLayoutBox) 
-            for i in range(0,3):
-                for j in range(0,3):
-                    candValue = 3*i + j + 1
-                    candStr = str(candValue) if candValue in candSet else ' '
-                    candLabel = QLabel(candStr, self)
-                    candLabel.setFont(candidatefont)
-                    gridLayoutBox.addWidget(candLabel, i, j)            
-        
-    def mouseReleaseEvent(self, QMouseEvent):
-        print ('Clicked on cell ('+str(self.i)+','+str(self.j)+'), with value '+self.cellString)
-        
-class Box(QLabel):
-    def __init__(self, parent, board, candBoard, bi, bj):
-        super(QLabel, self).__init__(parent)
-        self.setStyleSheet("background-color: lightgrey;")
-        self.bi = bi
-        self.bj = bj
-                
-        gridLayoutBox = QGridLayout() 
-        self.setLayout(gridLayoutBox) 
-        
-        for i in range(0,3):
-            for j in range(0,3):
-                ci = bi*3 + i
-                cj = bj*3 + j
-                strValue = Value2String(board[ci][cj])
-                candSet = candBoard[ci][cj]
-                cellLabel = Cell(self, strValue, candSet, ci, cj)
-                gridLayoutBox.addWidget(cellLabel, i, j) 
-     
-class SudokuMainWindow(QMainWindow):
-    def __init__(self, board, candBoard):
-        super(QMainWindow, self).__init__()
- 
-        self.setGeometry(500, 30, 900, 900)    
-        self.setWindowTitle("Simple Sudoku") 
-        self.setStyleSheet("background-color: grey;")
-        
-        centralWidget = QWidget(self)          
-        self.setCentralWidget(centralWidget)   
- 
-        gridLayout = QGridLayout()     
-#        gridLayout.setVerticalSpacing(2)
-#        gridLayout.setHorizontalSpacing(2)
-        centralWidget.setLayout(gridLayout)  
-        
-        self.CreateBoard(board, candBoard, self, gridLayout)
-        
-    def CreateBoard(self, board, candBoard, parent, layout):
-        for bi in range(0,3):
-            for bj in range(0,3):
-                box = Box(parent, board, candBoard, bi, bj)
-                layout.addWidget(box, bi, bj)  
-        
-    def mouseReleaseEvent(self, QMouseEvent):
-        print('('+str(QMouseEvent.x())+', '+str(QMouseEvent.y())+') \
-              ('+str(self.width())+','+str(self.height())+')')
-        
-def run_app(board, candBoard): 
-    app = QtWidgets.QApplication(sys.argv)
-    mainWin = SudokuMainWindow(board, candBoard)
-    mainWin.show()
-    return app.exec_()
 
 ###############################################################################
 def checkListForDuplicates(listOfElems):
@@ -109,6 +27,7 @@ def checkListForDuplicates(listOfElems):
         return True
     
 def CheckValid(board):
+    """ Check if no duplicate entries on any row, column or block """
     for i in range(0,9):
         row_i = board[i]
         if checkListForDuplicates(RemoveZeros(row_i)):
@@ -159,6 +78,104 @@ def SolveCandidates(board):
                 boardcopy[i][j] = set([board[i][j]])
     return boardcopy
 
+###############################################################################
+
+def Value2String(value):
+    return str(value) if value is not 0 else ' '
+    
+class Cell(QLabel):
+    def __init__(self, parent, strValue, candSet, i, j):
+        super(QLabel, self).__init__(strValue, parent)
+        self.cellString = strValue
+        
+        self.setStyleSheet("background-color: white;")
+        self.setAlignment(QtCore.Qt.AlignCenter)
+        cellfont = QFont("Arial", 45, QFont.Bold) 
+        candidatefont = QFont("Arial", 12)
+
+        self.setFont(cellfont)
+        self.i = i
+        self.j = j
+        
+        if strValue == ' ':
+            gridLayoutBox = QGridLayout() 
+            self.setLayout(gridLayoutBox) 
+            for i in range(0,3):
+                for j in range(0,3):
+                    candValue = 3*i + j + 1
+                    candStr = str(candValue) if candValue in candSet else ' '
+                    candLabel = QLabel(candStr, self)
+                    candLabel.setFont(candidatefont)
+                    gridLayoutBox.addWidget(candLabel, i, j)            
+        
+    def mouseReleaseEvent(self, QMouseEvent):
+        """ Prints the cell clicked on """
+        print ('Clicked on cell ('+str(self.i)+','+str(self.j)+'), with value '+self.cellString)
+        
+class Box(QLabel):
+    def __init__(self, parent, board, candBoard, bi, bj):
+        super(QLabel, self).__init__(parent)
+        self.setStyleSheet("background-color: lightgrey;")
+        self.bi = bi
+        self.bj = bj
+                
+        gridLayoutBox = QGridLayout() 
+        self.setLayout(gridLayoutBox) 
+        
+        for i in range(0,3):
+            for j in range(0,3):
+                ci = bi*3 + i
+                cj = bj*3 + j
+                strValue = Value2String(board[ci][cj])
+                candSet = candBoard[ci][cj]
+                cellLabel = Cell(self, strValue, candSet, ci, cj)
+                gridLayoutBox.addWidget(cellLabel, i, j) 
+     
+class SudokuMainWindow(QMainWindow):
+    def __init__(self, board, candBoard):
+        super(QMainWindow, self).__init__()
+ 
+        self.setGeometry(500, 30, 900, 900)    
+        self.setWindowTitle("Simple Sudoku") 
+        self.setStyleSheet("background-color: grey;")
+        
+        centralWidget = QWidget(self)          
+        self.setCentralWidget(centralWidget)   
+ 
+        gridLayout = QGridLayout()     
+#        gridLayout.setVerticalSpacing(2)
+#        gridLayout.setHorizontalSpacing(2)
+        centralWidget.setLayout(gridLayout)  
+        
+        self.CreateBoard(board, candBoard, self, gridLayout)
+        
+    def CreateBoard(self, board, candBoard, parent, layout):
+        """ Creates board display with initial board values and candidates """
+        for bi in range(0,3):
+            for bj in range(0,3):
+                box = Box(parent, board, candBoard, bi, bj)
+                layout.addWidget(box, bi, bj)  
+        
+    def mouseReleaseEvent(self, QMouseEvent):
+        print('('+str(QMouseEvent.x())+', '+str(QMouseEvent.y())+') \
+              ('+str(self.width())+','+str(self.height())+')')
+###############################################################################
+        
+
+        
+def run_app(origBoard, candBoard):
+    print 'Board is valid:', CheckValid(origboard)
+    
+    candBoard = SolveCandidates(origBoard)
+
+    app = QtWidgets.QApplication(sys.argv)
+    mainWin = SudokuMainWindow(origBoard, candBoard)
+    mainWin.show()
+    return app.exec_()
+
+
+###############################################################################
+
 def UnitTests():
     print '######### Unit Tests #############'
     testboard = [
@@ -185,6 +202,8 @@ def UnitTests():
     print 'Check valid via Block Duplicate Test. Should be False', CheckValid(boardcopy)
     
     print '######### End Unit Tests #############'
+
+###############################################################################
                 
 if __name__ == "__main__":  
     
@@ -202,8 +221,4 @@ if __name__ == "__main__":
     [0,4,9,2,0,6,0,0,7]
     ]
     
-    print 'Board is valid:', CheckValid(origboard)
-    
-    boardwCands = SolveCandidates(origboard)
-    
-    sys.exit(run_app(origboard, boardwCands))
+    sys.exit(run_app(origboard))
