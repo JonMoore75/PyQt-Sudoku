@@ -1,7 +1,8 @@
 import sys
 from copy import deepcopy
 from PyQt5 import QtCore, QtWidgets
-from PyQt5.QtWidgets import QMainWindow, QLabel, QGridLayout, QWidget
+from PyQt5.QtWidgets import QMainWindow, QLabel, QGridLayout, QWidget, \
+    QPushButton, QHBoxLayout, QVBoxLayout
 #from PyQt5.QtCore import QSize    
 
 from PyQt5.QtGui import QFont#, QPainter, QBrush, QPen, QCursor
@@ -155,20 +156,32 @@ class Box(QLabel):
 class SudokuMainWindow(QMainWindow):
     def __init__(self, board, candBoard):
         super(QMainWindow, self).__init__()
+        
+        self.currBoard = deepcopy(board)
+        self.candBoard = deepcopy(candBoard)
  
-        self.setGeometry(500, 30, 900, 900)    
+        self.setGeometry(500, 30, 1200, 900)    
         self.setWindowTitle("Simple Sudoku") 
         self.setStyleSheet("background-color: grey;")
         
         centralWidget = QWidget(self)          
         self.setCentralWidget(centralWidget)   
  
-        gridLayout = QGridLayout()     
-#        gridLayout.setVerticalSpacing(2)
-#        gridLayout.setHorizontalSpacing(2)
-        centralWidget.setLayout(gridLayout)  
+#        gridLayout = QGridLayout()     
+##        gridLayout.setVerticalSpacing(2)
+##        gridLayout.setHorizontalSpacing(2)
+#        centralWidget.setLayout(gridLayout)
         
+        outerLayout = QGridLayout()
+        centralWidget.setLayout(outerLayout)
+        
+        gridLayout = QGridLayout()
+        outerLayout.addLayout(gridLayout,0,0,9,9)
         self.CreateBoard(board, candBoard, self, gridLayout)
+        
+        vLayout = QVBoxLayout()
+        outerLayout.addLayout(vLayout,2,9,1,3)
+        self.CreateButtons(self, vLayout)
         
     def CreateBoard(self, board, candBoard, parent, layout):
         """ Creates board display with initial board values and candidates """
@@ -177,6 +190,14 @@ class SudokuMainWindow(QMainWindow):
             for bj in range(0,3):
                 self.boxes[bi][bj] = Box(parent, board, candBoard, bi, bj)
                 layout.addWidget(self.boxes[bi][bj], bi, bj)  
+                
+    def CreateButtons(self, parent, layout):
+        solveButton = QPushButton('Solve')
+        layout.addWidget(solveButton)
+        solveButton.clicked.connect(lambda: self.Solve())
+        
+    def Solve(self):
+        self.FillinSingleCandidates(self.currBoard, self.candBoard)
                 
     def FillinCell(self, i, j, value):
         """ Will fill in value in a cell if it is empty/unknown """
@@ -220,9 +241,9 @@ def run_app(origBoard):
     mainWin = SudokuMainWindow(origBoard, candBoard)
     mainWin.show()
     
-    currBoard = deepcopy(origBoard)
     
-    mainWin.FillinSingleCandidates(currBoard, candBoard)
+    
+#    mainWin.FillinSingleCandidates(currBoard, candBoard)
     
     return app.exec_()
 
