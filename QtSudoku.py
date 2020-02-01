@@ -109,12 +109,14 @@ class Cell(QLabel):
                     self.gridLayoutBox.addWidget(candLabel, i, j)
                     
     def UpdateValue(self, strValue):
+        """ Will fill in value in a cell if it is empty/unknown """
         if self.cellString == ' ' and strValue != ' ':
             # Delete all candidate label widgets 
             for i in reversed(range(self.gridLayoutBox.count())): 
                 self.gridLayoutBox.itemAt(i).widget().setParent(None)
                 
             self.setText(strValue)
+            self.cellString = strValue
             self.setStyleSheet('background-color: white; color: darkgrey')
             self.update()
         
@@ -143,6 +145,7 @@ class Box(QLabel):
                 self.gridLayoutBox.addWidget(cellLabel, i, j)
                 
     def FillinCell(self, i, j, value):
+        """ Will fill in value in a cell if it is empty/unknown """
         ci = i - 3*self.bi
         cj = j - 3*self.bj
         
@@ -176,31 +179,37 @@ class SudokuMainWindow(QMainWindow):
                 layout.addWidget(self.boxes[bi][bj], bi, bj)  
                 
     def FillinCell(self, i, j, value):
+        """ Will fill in value in a cell if it is empty/unknown """
         bi = i/3
         bj = j/3
         
         self.boxes[bi][bj].FillinCell(i, j, value)
         
+    def FillinSingleCandidates(self, board, candBoard):
+        """ Look for cells with only 1 candidate and fill them in 
+        Then update candidates and iterate.  Each change check validity.  
+        If not valid then break out to prevent loops. """
+        changes = False
+        for i in range(0,9):
+            for j in range(0,9): 
+                if len(candBoard[i][j]) == 1 and board[i][j] == 0:
+                    changes = True
+                    board[i][j] = next(iter(candBoard[i][j]))
+                    self.FillinCell(i, j, board[i][j])
+                    
+                    candBoard = SolveCandidates(board)
+                    
+                    if not CheckValid(board):
+                        return
+        
+        if changes:
+            self.FillinSingleCandidates(board, candBoard)
+        
     def mouseReleaseEvent(self, QMouseEvent):
         print('('+str(QMouseEvent.x())+', '+str(QMouseEvent.y())+') \
               ('+str(self.width())+','+str(self.height())+')')
 ###############################################################################
-def FillinSingleCandidates(qtWindow, board, candBoard):
-    changes = False
-    for i in range(0,9):
-        for j in range(0,9): 
-            if len(candBoard[i][j]) == 1 and board[i][j] == 0:
-                changes = True
-                board[i][j] = next(iter(candBoard[i][j]))
-                qtWindow.FillinCell(i, j, board[i][j])
-                
-                candBoard = SolveCandidates(board)
-                
-                if not CheckValid(board):
-                    return
-    
-    if changes:
-        FillinSingleCandidates(qtWindow, board, candBoard)
+
 
 def run_app(origBoard):
     print 'Board is valid:', CheckValid(origBoard)
@@ -213,7 +222,7 @@ def run_app(origBoard):
     
     currBoard = deepcopy(origBoard)
     
-    FillinSingleCandidates(mainWin, currBoard, candBoard)
+    mainWin.FillinSingleCandidates(currBoard, candBoard)
     
     return app.exec_()
 
