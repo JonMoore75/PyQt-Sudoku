@@ -16,18 +16,38 @@ if hasattr(QtCore.Qt, 'AA_UseHighDpiPixmaps'):
 environ["QT_AUTO_SCREEN_SCALE_FACTOR"] = "1"
     
 class Cell(QLabel):
-    def __init__(self, parent, value, font, i, j):
+    def __init__(self, parent, value, i, j):
         self.cellString = str(value) if value is not 0 else ' '
         super(QLabel, self).__init__(self.cellString, parent)
         
         self.setStyleSheet("background-color: white;")
         self.setAlignment(QtCore.Qt.AlignCenter)
-        self.setFont(font)
+        cellfont = QFont("Arial", 45, QFont.Bold) 
+        candidatefont = QFont("Arial", 15)
+
+        self.setFont(cellfont)
         self.i = i
         self.j = j
         
     def mouseReleaseEvent(self, QMouseEvent):
-        print 'Clicked on '+self.cellString
+        print ('Clicked on cell ('+str(self.i)+','+str(self.j)+'), with value '+self.cellString)
+        
+class Box(QLabel):
+    def __init__(self, parent, bi, bj):
+        super(QLabel, self).__init__(parent)
+        self.setStyleSheet("background-color: lightgrey;")
+        self.bi = bi
+        self.bj = bj
+                
+        gridLayoutBox = QGridLayout() 
+        self.setLayout(gridLayoutBox) 
+        
+        for i in range(0,3):
+            for j in range(0,3):
+                ci = bi*3 + i
+                cj = bj*3 + j
+                cellLabel = Cell(self, board[ci][cj], ci, cj)
+                gridLayoutBox.addWidget(cellLabel, i, j) 
      
 class SudokuMainWindow(QMainWindow):
     def __init__(self, board):
@@ -48,11 +68,15 @@ class SudokuMainWindow(QMainWindow):
         self.CreateBoard(board, self, gridLayout)
         
     def CreateBoard(self, board, parent, layout):
-        cellfont = QFont("Arial", 45, QFont.Bold) 
-        for i in range(0,9):
-            for j in range(0,9):
-                cellLabel = Cell(parent, board[i][j], cellfont, i, j)
-                layout.addWidget(cellLabel, i, j) 
+        for bi in range(0,3):
+            for bj in range(0,3):
+                box = Box(parent, bi, bj)
+                layout.addWidget(box, bi, bj) 
+
+#        for i in range(0,9):
+#            for j in range(0,9):
+#                cellLabel = Cell(parent, board[i][j], cellfont, i, j)
+#                layout.addWidget(cellLabel, i, j) 
         
     def mouseReleaseEvent(self, QMouseEvent):
         print('('+str(QMouseEvent.x())+', '+str(QMouseEvent.y())+') \
