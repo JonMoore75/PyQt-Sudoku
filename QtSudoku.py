@@ -284,10 +284,15 @@ class SudokuMainWindow(QMainWindow):
         """ Placeholder for backtracking solver """
         prevBoard = deepcopy(self.currBoard)
         
-        SolvewBacktrack(self.currBoard)
+        solved = SolvewBacktrack(self.currBoard)
+        
+        if not solved:
+            print 'No solution'
         
         self.UpdateChangedCells(prevBoard, self.candBoard)
-        
+        if not CheckValid(self.currBoard):
+            print 'Invalid'
+            
     def FillinSingleCandidatesStep(self):
         """ Look for cells with only 1 candidate and fill them in.
         Updates the candidates after finished """
