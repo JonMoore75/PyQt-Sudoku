@@ -91,10 +91,10 @@ class Cell(QLabel):
         
         self.setStyleSheet("background-color: white;")
         self.setAlignment(QtCore.Qt.AlignCenter)
-        cellfont = QFont("Arial", 45, QFont.Bold) 
-        candidatefont = QFont("Arial", 12)
+        self.cellfont = QFont("Arial", 45, QFont.Bold) 
+        self.candidatefont = QFont("Arial", 12)
 
-        self.setFont(cellfont)
+        self.setFont(self.cellfont)
         self.i = i
         self.j = j
         
@@ -106,7 +106,7 @@ class Cell(QLabel):
                     candValue = 3*i + j + 1
                     candStr = str(candValue) if candValue in candSet else ' '
                     candLabel = QLabel(candStr, self)
-                    candLabel.setFont(candidatefont)
+                    candLabel.setFont(self.candidatefont)
                     self.gridLayoutBox.addWidget(candLabel, i, j)
                     
     def UpdateValue(self, strValue):
@@ -120,6 +120,17 @@ class Cell(QLabel):
             self.cellString = strValue
             self.setStyleSheet('background-color: white; color: darkgrey')
             self.update()
+            
+    def UpdateCandidates(self, candSet):
+        """ Updates the valid candidates for empty/unknown cell """
+        if self.cellString == ' ': 
+            for i in range(0,3):
+                for j in range(0,3):
+                    candValue = 3*i + j + 1
+                    candStr = str(candValue) if candValue in candSet else ' '
+                    cand = self.gridLayoutBox.itemAtPosition(i, j).widget()
+                    cand.setText(candStr)
+       
         
         
     def mouseReleaseEvent(self, QMouseEvent):
@@ -145,6 +156,14 @@ class Box(QLabel):
                 cellLabel = Cell(self, strValue, candSet, ci, cj)
                 self.gridLayoutBox.addWidget(cellLabel, i, j)
                 
+    def UpdateCandidates(self, i, j, candSet):
+        """ Updates the valid candidates for empty/unknown cell """
+        ci = i - 3*self.bi
+        cj = j - 3*self.bj
+        
+        cell = self.gridLayoutBox.itemAtPosition(ci, cj).widget()
+        cell.UpdateCandidates(candSet)
+                
     def FillinCell(self, i, j, value):
         """ Will fill in value in a cell if it is empty/unknown """
         ci = i - 3*self.bi
@@ -166,11 +185,6 @@ class SudokuMainWindow(QMainWindow):
         
         centralWidget = QWidget(self)          
         self.setCentralWidget(centralWidget)   
- 
-#        gridLayout = QGridLayout()     
-##        gridLayout.setVerticalSpacing(2)
-##        gridLayout.setHorizontalSpacing(2)
-#        centralWidget.setLayout(gridLayout)
         
         outerLayout = QGridLayout()
         centralWidget.setLayout(outerLayout)
@@ -180,7 +194,7 @@ class SudokuMainWindow(QMainWindow):
         self.CreateBoard(board, candBoard, self, gridLayout)
         
         vLayout = QVBoxLayout()
-        outerLayout.addLayout(vLayout,2,9,1,3)
+        outerLayout.addLayout(vLayout,2,9,3,3)
         self.CreateButtons(self, vLayout)
         
     def CreateBoard(self, board, candBoard, parent, layout):
@@ -192,12 +206,22 @@ class SudokuMainWindow(QMainWindow):
                 layout.addWidget(self.boxes[bi][bj], bi, bj)  
                 
     def CreateButtons(self, parent, layout):
+        """ Create the buttons toolbar for solving options """
         solveButton = QPushButton('Solve')
-        layout.addWidget(solveButton)
         solveButton.clicked.connect(lambda: self.Solve())
+        layout.addWidget(solveButton)
         
+        singleCandButton = QPushButton('Fill Single Candidates')
+        singleCandButton.clicked.connect(lambda: self.FillinSingleCandidates(self.currBoard, self.candBoard))
+        layout.addWidget(singleCandButton)
+
+        singleCandStepButton = QPushButton('Fill Single Candidates - Step')
+        singleCandStepButton.clicked.connect(lambda: self.FillinSingleCandidatesStep(self.currBoard, self.candBoard))
+        layout.addWidget(singleCandStepButton)
+          
     def Solve(self):
-        self.FillinSingleCandidates(self.currBoard, self.candBoard)
+        """ Placeholder for backtracking solver """
+        pass
                 
     def FillinCell(self, i, j, value):
         """ Will fill in value in a cell if it is empty/unknown """
@@ -205,6 +229,32 @@ class SudokuMainWindow(QMainWindow):
         bj = j/3
         
         self.boxes[bi][bj].FillinCell(i, j, value)
+        
+    def FillinSingleCandidatesStep(self, board, candBoard):
+        """ Look for cells with only 1 candidate and fill them in.
+        Exit if invalid.  Updates the candidates after finished """
+        for i in range(0,9):
+            for j in range(0,9): 
+                if len(candBoard[i][j]) == 1 and board[i][j] == 0:
+                    board[i][j] = next(iter(candBoard[i][j]))
+                    self.FillinCell(i, j, board[i][j])
+                                        
+                    if not CheckValid(board):
+                        print 'Invalid'
+                        return   
+                             
+        self.candBoard = SolveCandidates(board)
+        self.currBoard = board
+                    
+        for i in range(0,9):
+            for j in range(0,9):
+                if len(candBoard[i][j]) != 1:
+                    candSet = self.candBoard[i][j]
+                    bi = i/3
+                    bj = j/3
+                    self.boxes[bi][bj].UpdateCandidates(i, j, candSet)
+                    
+
         
     def FillinSingleCandidates(self, board, candBoard):
         """ Look for cells with only 1 candidate and fill them in 
@@ -218,13 +268,23 @@ class SudokuMainWindow(QMainWindow):
                     board[i][j] = next(iter(candBoard[i][j]))
                     self.FillinCell(i, j, board[i][j])
                     
-                    candBoard = SolveCandidates(board)
-                    
                     if not CheckValid(board):
+                        print 'Invalid'
                         return
+                    
+        self.candBoard = SolveCandidates(board)
+        self.currBoard = board
         
         if changes:
-            self.FillinSingleCandidates(board, candBoard)
+            self.FillinSingleCandidates(self.currBoard, self.candBoard)
+            
+        for i in range(0,9):
+            for j in range(0,9):
+                if len(candBoard[i][j]) != 1:
+                    candSet = self.candBoard[i][j]
+                    bi = i/3
+                    bj = j/3
+                    self.boxes[bi][bj].UpdateCandidates(i, j, candSet)
         
     def mouseReleaseEvent(self, QMouseEvent):
         print('('+str(QMouseEvent.x())+', '+str(QMouseEvent.y())+') \
