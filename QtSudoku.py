@@ -20,7 +20,7 @@ def Value2String(value):
     return str(value) if value is not 0 else ' '
     
 class Cell(QLabel):
-    def __init__(self, parent, strValue, i, j):
+    def __init__(self, parent, strValue, candSet, i, j):
         super(QLabel, self).__init__(strValue, parent)
         self.cellString = strValue
         
@@ -38,8 +38,9 @@ class Cell(QLabel):
             self.setLayout(gridLayoutBox) 
             for i in range(0,3):
                 for j in range(0,3):
-                    candValue = str(3*i + j + 1)
-                    candLabel = QLabel(candValue, self)
+                    candValue = 3*i + j + 1
+                    candStr = str(candValue) if candValue in candSet else ' '
+                    candLabel = QLabel(candStr, self)
                     candLabel.setFont(candidatefont)
                     gridLayoutBox.addWidget(candLabel, i, j)            
         
@@ -47,7 +48,7 @@ class Cell(QLabel):
         print ('Clicked on cell ('+str(self.i)+','+str(self.j)+'), with value '+self.cellString)
         
 class Box(QLabel):
-    def __init__(self, parent, board, bi, bj):
+    def __init__(self, parent, board, candBoard, bi, bj):
         super(QLabel, self).__init__(parent)
         self.setStyleSheet("background-color: lightgrey;")
         self.bi = bi
@@ -61,11 +62,12 @@ class Box(QLabel):
                 ci = bi*3 + i
                 cj = bj*3 + j
                 strValue = Value2String(board[ci][cj])
-                cellLabel = Cell(self, strValue, ci, cj)
+                candSet = candBoard[ci][cj]
+                cellLabel = Cell(self, strValue, candSet, ci, cj)
                 gridLayoutBox.addWidget(cellLabel, i, j) 
      
 class SudokuMainWindow(QMainWindow):
-    def __init__(self, board):
+    def __init__(self, board, candBoard):
         super(QMainWindow, self).__init__()
  
         self.setGeometry(500, 30, 900, 900)    
@@ -80,21 +82,21 @@ class SudokuMainWindow(QMainWindow):
 #        gridLayout.setHorizontalSpacing(2)
         centralWidget.setLayout(gridLayout)  
         
-        self.CreateBoard(board, self, gridLayout)
+        self.CreateBoard(board, candBoard, self, gridLayout)
         
-    def CreateBoard(self, board, parent, layout):
+    def CreateBoard(self, board, candBoard, parent, layout):
         for bi in range(0,3):
             for bj in range(0,3):
-                box = Box(parent, board, bi, bj)
+                box = Box(parent, board, candBoard, bi, bj)
                 layout.addWidget(box, bi, bj)  
         
     def mouseReleaseEvent(self, QMouseEvent):
         print('('+str(QMouseEvent.x())+', '+str(QMouseEvent.y())+') \
               ('+str(self.width())+','+str(self.height())+')')
         
-def run_app(board): 
+def run_app(board, candBoard): 
     app = QtWidgets.QApplication(sys.argv)
-    mainWin = SudokuMainWindow(board)
+    mainWin = SudokuMainWindow(board, candBoard)
     mainWin.show()
     return app.exec_()
 
@@ -158,7 +160,7 @@ def SolveCandidates(board):
     return boardcopy
                 
 if __name__ == "__main__":  
-    testboard = [
+    origboard = [
     [7,8,0,4,0,0,1,2,0],
     [6,0,0,0,7,5,0,0,9],
     [0,0,0,6,0,1,0,7,8],
@@ -170,9 +172,9 @@ if __name__ == "__main__":
     [0,4,9,2,0,6,0,0,7]
     ]
     
-    print CheckValid(testboard)
+    print CheckValid(origboard)
     
-    boardcopy = deepcopy(testboard)
+    boardcopy = deepcopy(origboard)
     
     boardcopy[4][4] = 3    
     print CheckValid(boardcopy)
@@ -184,7 +186,7 @@ if __name__ == "__main__":
     boardcopy[8][8] = 1
     print CheckValid(boardcopy)
     
-    boardwCands = SolveCandidates(testboard)
+    boardwCands = SolveCandidates(origboard)
     print boardwCands
     
-    sys.exit(run_app(testboard))
+    sys.exit(run_app(origboard, boardwCands))
