@@ -99,6 +99,31 @@ def run_app(board):
     return app.exec_()
 
 ###############################################################################
+def checkListForDuplicates(listOfElems):
+    """ Check if given list contains any duplicates """
+    if len(listOfElems) == len(set(listOfElems)):
+        return False
+    else:
+        return True
+    
+def CheckValid(board):
+    for i in range(0,9):
+        row_i = board[i]
+        if checkListForDuplicates(RemoveZeros(row_i)):
+            return False
+        
+    for j in range(0,9):
+        col_j = [row[j] for row in board]
+        if checkListForDuplicates(RemoveZeros(col_j)):
+            return False
+        
+    for bi in range(0,3):
+        for bj in range(0,3):
+            block = [[board[bi*3 + ci][bj*3 + cj] for cj in range(0,3)] for ci in range(0,3)]
+            if checkListForDuplicates(RemoveZeros([c for row in block for c in row])):
+                return False
+            
+    return True
 
 def RemoveZeros(inputList):
     """ Remove zeros from a list """
@@ -145,7 +170,19 @@ if __name__ == "__main__":
     [0,4,9,2,0,6,0,0,7]
     ]
     
+    print CheckValid(board)
     
+    boardcopy = deepcopy(board)
+    
+    boardcopy[4][4] = 3    
+    print CheckValid(boardcopy)
+    
+    boardcopy[4][4] = 7
+    print CheckValid(boardcopy)
+    
+    boardcopy[4][4] = 5
+    boardcopy[8][8] = 1
+    print CheckValid(boardcopy)
     
     boardwCands = SolveCandidates(board)
     
