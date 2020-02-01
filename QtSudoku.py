@@ -185,15 +185,25 @@ class SudokuMainWindow(QMainWindow):
         print('('+str(QMouseEvent.x())+', '+str(QMouseEvent.y())+') \
               ('+str(self.width())+','+str(self.height())+')')
 ###############################################################################
-#def FillinSingleCandidates(qtWindow, board, candBoard):
-#    for i in range(0,9):
-#        for j in range(0,9): 
-#            if len(candBoard[i][j]) == 1:
-#                if 
+def FillinSingleCandidates(qtWindow, board, candBoard):
+    changes = False
+    for i in range(0,9):
+        for j in range(0,9): 
+            if len(candBoard[i][j]) == 1 and board[i][j] == 0:
+                changes = True
+                board[i][j] = next(iter(candBoard[i][j]))
+                qtWindow.FillinCell(i, j, board[i][j])
+                
+                candBoard = SolveCandidates(board)
+                
+                if not CheckValid(board):
+                    return
+    
+    if changes:
+        FillinSingleCandidates(qtWindow, board, candBoard)
 
-        
 def run_app(origBoard):
-    print 'Board is valid:', CheckValid(origboard)
+    print 'Board is valid:', CheckValid(origBoard)
     
     candBoard = SolveCandidates(origBoard)
 
@@ -203,7 +213,7 @@ def run_app(origBoard):
     
     currBoard = deepcopy(origBoard)
     
-    mainWin.FillinCell(1, 3, 8)
+    FillinSingleCandidates(mainWin, currBoard, candBoard)
     
     return app.exec_()
 
@@ -243,16 +253,27 @@ if __name__ == "__main__":
     
     UnitTests()
     
-    origboard = [
-    [7,8,0,4,0,0,1,2,0],
-    [6,0,0,0,7,5,0,0,9],
-    [0,0,0,6,0,1,0,7,8],
-    [0,0,7,0,4,0,2,6,0],
-    [0,0,1,0,5,0,9,3,0],
-    [9,0,4,0,6,0,0,0,5],
-    [0,7,0,3,0,0,0,1,2],
-    [1,2,0,0,0,7,4,0,0],
-    [0,4,9,2,0,6,0,0,7]
+    easyboard = [
+    [0,8,0,0,0,0,3,5,0],
+    [5,0,4,0,8,0,1,9,0],
+    [0,3,0,0,4,0,0,2,8],
+    [0,0,0,0,0,9,6,0,0],
+    [0,6,3,0,0,0,4,0,2],
+    [0,0,0,7,0,0,0,1,3],
+    [4,2,0,3,9,0,0,0,7],
+    [3,5,6,0,0,8,0,4,0],
+    [0,0,8,0,2,4,5,0,0]
     ]
-    
-    sys.exit(run_app(origboard))
+
+    hardboard = [
+    [0,0,0,0,0,0,4,0,0],
+    [0,0,1,0,7,0,0,9,0],
+    [5,0,0,0,3,0,0,0,6],
+    [0,8,0,2,0,0,0,0,0],
+    [7,0,0,0,0,0,9,2,0],
+    [1,2,0,6,0,5,0,0,0],
+    [0,5,0,0,0,0,0,4,0],
+    [0,7,3,9,0,8,0,0,0],
+    [6,0,0,4,5,0,2,0,0]
+    ]    
+    sys.exit(run_app(easyboard))
