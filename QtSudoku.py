@@ -1,4 +1,5 @@
 import sys
+from copy import deepcopy
 from PyQt5 import QtCore, QtWidgets
 from PyQt5.QtWidgets import QMainWindow, QLabel, QGridLayout, QWidget
 #from PyQt5.QtCore import QSize    
@@ -97,6 +98,39 @@ def run_app(board):
     mainWin.show()
     return app.exec_()
 
+###############################################################################
+
+def RemoveZeros(inputList):
+    """ Remove zeros from a list """
+    return list(filter(lambda a: a != 0, inputList))
+
+def GetCandidateList(board, i, j):
+    """ Find possible values in a cell """
+    bi = i/3
+    bj = j/3
+    
+    block = [[board[bi*3 + ci][bj*3 + cj] for cj in range(0,3)] for ci in range(0,3)]
+    row_i = board[i]
+    col_j = [row[j] for row in board]
+    
+    blockValues = set(RemoveZeros([c for row in block for c in row]))
+    rowValues = set(RemoveZeros(row_i))
+    colValues = set(RemoveZeros(col_j))
+    
+    return set(range(1,10)) - blockValues - rowValues - colValues
+
+def SolveCandidates(board):
+    """ Takes a Sudoku board (2d 9x9 list of ints with 0 as empty cell) and 
+    returns a board that is a 2d 9x9 list of sets.  Each set is the possible 
+    int values. Known values are now sets with 1 item. """
+    boardcopy = deepcopy(board)
+    for i in range(0,9):
+        for j in range(0,9):
+            if board[i][j] == 0:
+                boardcopy[i][j] = GetCandidateList(board, i, j)
+            else:
+                boardcopy[i][j] = set([board[i][j]])
+    return boardcopy
                 
 if __name__ == "__main__":  
     board = [
@@ -110,5 +144,11 @@ if __name__ == "__main__":
     [1,2,0,0,0,7,4,0,0],
     [0,4,9,2,0,6,0,0,7]
     ]
+    
+    
+    
+    boardwCands = SolveCandidates(board)
+    
+    print boardwCands
     
     sys.exit(run_app(board))
