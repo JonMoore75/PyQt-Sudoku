@@ -1,6 +1,9 @@
 import sys
 from copy import deepcopy
-from PyQt5 import QtCore, QtWidgets
+from PyQt5 import QtCore, QtWidgets 
+#from PyQt5.QtCore import Signal, Slot 
+from PyQt5.QtCore import pyqtSignal, pyqtSlot
+Signal, Slot = pyqtSignal, pyqtSlot 
 from PyQt5.QtWidgets import QMainWindow, QLabel, QGridLayout, QWidget, \
     QPushButton, QHBoxLayout, QVBoxLayout
 #from PyQt5.QtCore import QSize    
@@ -126,6 +129,7 @@ def Value2String(value):
     return str(value) if value is not 0 else ' '
     
 class Cell(QLabel):
+    selected = Signal(int, int)
     def __init__(self, parent, strValue, candSet, i, j):
         super(QLabel, self).__init__(strValue, parent)
         self.cellString = strValue
@@ -149,6 +153,9 @@ class Cell(QLabel):
                     candLabel = QLabel(candStr, self)
                     candLabel.setFont(self.candidatefont)
                     self.gridLayoutBox.addWidget(candLabel, i, j)
+                    
+    def ConnectCelltoWindow(self, ClickFunc):
+        self.selected.connect(ClickFunc)
                     
     def UpdateValue(self, strValue):
         """ Will fill in value in a cell if it is empty/unknown """
@@ -176,7 +183,13 @@ class Cell(QLabel):
         
     def mouseReleaseEvent(self, QMouseEvent):
         """ Prints the cell clicked on """
-        print ('Clicked on cell ('+str(self.i)+','+str(self.j)+'), with value '+self.cellString)
+        self.selected.emit(self.i, self.j)
+        self.setStyleSheet("background-color: lightblue;")
+#        print ('Clicked on cell ('+str(self.i)+','+str(self.j)+'), with value '+self.cellString)
+        
+    
+    def Deselect(self):
+        self.setStyleSheet("background-color: white;")
         
 class Box(QLabel):
     def __init__(self, parent, board, candBoard, bi, bj):
@@ -204,14 +217,22 @@ class Box(QLabel):
         
         cell = self.gridLayoutBox.itemAtPosition(ci, cj).widget()
         cell.UpdateCandidates(candSet)
-                
-    def FillinCell(self, i, j, value):
-        """ Will fill in value in a cell if it is empty/unknown """
+        
+    def GetCell(self, i,j):
         ci = i - 3*self.bi
         cj = j - 3*self.bj
-        
-        cell = self.gridLayoutBox.itemAtPosition(ci, cj).widget()
+        return self.gridLayoutBox.itemAtPosition(ci, cj).widget()
+                
+    def FillinCell(self, i, j, value):
+        """ Will fill in value in a cell if it is empty/unknown """        
+        cell = self.GetCell(i,j)
         cell.UpdateValue(Value2String(value))
+        
+    def ConnectCellstoWindow(self, ClickFunc):
+        for i in range(0,3):
+            for j in range(0,3):
+                cell = self.gridLayoutBox.itemAtPosition(i, j).widget()
+                cell.ConnectCelltoWindow(ClickFunc)
      
 class SudokuMainWindow(QMainWindow):
     def __init__(self, board, candBoard):
@@ -238,12 +259,15 @@ class SudokuMainWindow(QMainWindow):
         outerLayout.addLayout(vLayout,2,9,3,3)
         self.CreateButtons(self, vLayout)
         
+        self.selectedCell = None
+        
     def CreateBoard(self, board, candBoard, parent, layout):
         """ Creates board display with initial board values and candidates """
         self.boxes = [[None for _ in range(3)] for _ in range(3)]
         for bi in range(0,3):
             for bj in range(0,3):
                 self.boxes[bi][bj] = Box(parent, board, candBoard, bi, bj)
+                self.boxes[bi][bj].ConnectCellstoWindow(self.CellClicked)
                 layout.addWidget(self.boxes[bi][bj], bi, bj)  
                 
     def CreateButtons(self, parent, layout):
@@ -259,6 +283,18 @@ class SudokuMainWindow(QMainWindow):
         singleCandStepButton = QPushButton('Fill Single Candidates - Step')
         singleCandStepButton.clicked.connect(lambda: self.FillinSingleCandidatesStep())
         layout.addWidget(singleCandStepButton)
+        
+    def CellClicked(self, i, j):    
+        if self.selectedCell:
+            self.selectedCell.Deselect()
+
+        bi = i/3
+        bj = j/3       
+    
+        self.selectedCell = self.boxes[bi][bj].GetCell(i, j)
+        
+        print ('Clicked on cell ('+str(self.selectedCell.i)+','\
+         +str(self.selectedCell.j)+'), with value '+self.selectedCell.cellString)
           
                 
     def FillinCell(self, i, j, value):
@@ -325,6 +361,9 @@ class SudokuMainWindow(QMainWindow):
             print 'Invalid'
         
     def mouseReleaseEvent(self, QMouseEvent):
+        if self.selectedCell:
+            self.selectedCell.Deselect()
+        self.selectedCell = None
         print('('+str(QMouseEvent.x())+', '+str(QMouseEvent.y())+') \
               ('+str(self.width())+','+str(self.height())+')')
 ###############################################################################
