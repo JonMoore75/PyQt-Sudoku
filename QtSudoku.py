@@ -6,7 +6,7 @@ Signal, Slot = pyqtSignal, pyqtSlot
 from PyQt5.QtWidgets import QMainWindow, QLabel, QGridLayout, QWidget, \
     QPushButton, QHBoxLayout, QVBoxLayout    
 
-from PyQt5.QtGui import QFont#, QPainter, QBrush, QPen, QCursor
+from PyQt5.QtGui import QFont
 
 from os import environ
 
@@ -125,7 +125,9 @@ def SolvewBacktrack(board):
 
 def Value2String(value):
     return str(value) if value is not 0 else ' '
-    
+        
+#####################      
+  
 class Cell(QLabel):
     selected = Signal(object)
     def __init__(self, parent, strValue, candSet, i, j):
@@ -193,15 +195,27 @@ class Cell(QLabel):
     def mouseReleaseEvent(self, QMouseEvent):
         """ Prints the cell clicked on """
         self.selected.emit(self)
-
-        self.setProperty('selected', True)
-        self.style().unpolish(self)
-        self.style().polish(self)
+        
+        if self.property('selected'):
+            for i in range(0,3):
+                for j in range(0,3):
+                    candValue = 3*i + j + 1
+                    cand = self.gridLayoutBox.itemAtPosition(i, j).widget()
+                    if cand.underMouse():
+                        print candValue, cand.text()
+                        candStr = str(candValue) if cand.text() == ' ' else ' '
+                        cand.setText(candStr)
+        else:
+            self.setProperty('selected', True)
+            self.style().unpolish(self)
+            self.style().polish(self)
     
     def Deselect(self):
         self.setProperty('selected', False)
         self.style().unpolish(self)
         self.style().polish(self)
+        
+#####################      
         
 class Box(QLabel):
     def __init__(self, parent, board, candBoard, bi, bj):
@@ -245,6 +259,8 @@ class Box(QLabel):
             for j in range(0,3):
                 cell = self.gridLayoutBox.itemAtPosition(i, j).widget()
                 cell.ConnectCelltoWindow(ClickFunc)
+        
+#####################      
      
 class SudokuMainWindow(QMainWindow):
     def __init__(self, board, candBoard):
@@ -297,7 +313,7 @@ class SudokuMainWindow(QMainWindow):
         layout.addWidget(singleCandStepButton)
         
     def CellClicked(self, cell):
-        if self.selectedCell:
+        if self.selectedCell and self.selectedCell is not cell:
             self.selectedCell.Deselect()
    
         self.selectedCell = cell
