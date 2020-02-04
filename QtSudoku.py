@@ -1,12 +1,10 @@
 import sys
 from copy import deepcopy
-from PyQt5 import QtCore, QtWidgets 
-#from PyQt5.QtCore import Signal, Slot 
-from PyQt5.QtCore import pyqtSignal, pyqtSlot
+from PyQt5 import QtCore, QtWidgets
+from PyQt5.QtCore import Qt, pyqtSignal, pyqtSlot
 Signal, Slot = pyqtSignal, pyqtSlot 
 from PyQt5.QtWidgets import QMainWindow, QLabel, QGridLayout, QWidget, \
-    QPushButton, QHBoxLayout, QVBoxLayout
-#from PyQt5.QtCore import QSize    
+    QPushButton, QHBoxLayout, QVBoxLayout    
 
 from PyQt5.QtGui import QFont#, QPainter, QBrush, QPen, QCursor
 
@@ -133,8 +131,17 @@ class Cell(QLabel):
     def __init__(self, parent, strValue, candSet, i, j):
         super(QLabel, self).__init__(strValue, parent)
         self.cellString = strValue
-        
-        self.setStyleSheet("background-color: white;")
+
+        self.setStyleSheet("""
+           Cell[selected="true"] {background-color: lightblue;}
+           Cell[selected="false"] {background-color: white;}
+           Cell[edit="true"] {color: darkgrey;}
+           Cell[edit="false"] {color: black;}
+            """)
+        self.setProperty('selected', False)
+        self.setProperty('edit', False)
+        self.style().unpolish(self)
+        self.style().polish(self)
         self.setAlignment(QtCore.Qt.AlignCenter)
         self.cellfont = QFont("Arial", 45, QFont.Bold) 
         self.candidatefont = QFont("Arial", 12)
@@ -152,6 +159,7 @@ class Cell(QLabel):
                     candStr = str(candValue) if candValue in candSet else ' '
                     candLabel = QLabel(candStr, self)
                     candLabel.setFont(self.candidatefont)
+                    candLabel.setAttribute(Qt.WA_TranslucentBackground)
                     self.gridLayoutBox.addWidget(candLabel, i, j)
                     
     def ConnectCelltoWindow(self, ClickFunc):
@@ -166,8 +174,11 @@ class Cell(QLabel):
                 
             self.setText(strValue)
             self.cellString = strValue
-            self.setStyleSheet('background-color: white; color: darkgrey')
-            self.update()
+            
+            self.setProperty('edit', True)
+            self.style().unpolish(self)
+            self.style().polish(self)
+
             
     def UpdateCandidates(self, candSet):
         """ Updates the valid candidates for empty/unknown cell """
@@ -178,23 +189,24 @@ class Cell(QLabel):
                     candStr = str(candValue) if candValue in candSet else ' '
                     cand = self.gridLayoutBox.itemAtPosition(i, j).widget()
                     cand.setText(candStr)
-       
-        
         
     def mouseReleaseEvent(self, QMouseEvent):
         """ Prints the cell clicked on """
-        self.selected.emit(self)#self.i, self.j)
-        self.setStyleSheet("background-color: lightblue;")
-#        print ('Clicked on cell ('+str(self.i)+','+str(self.j)+'), with value '+self.cellString)
-        
+        self.selected.emit(self)
+
+        self.setProperty('selected', True)
+        self.style().unpolish(self)
+        self.style().polish(self)
     
     def Deselect(self):
-        self.setStyleSheet("background-color: white;")
+        self.setProperty('selected', False)
+        self.style().unpolish(self)
+        self.style().polish(self)
         
 class Box(QLabel):
     def __init__(self, parent, board, candBoard, bi, bj):
         super(QLabel, self).__init__(parent)
-        self.setStyleSheet("background-color: lightgrey;")
+        self.setStyleSheet('background-color: lightgrey;')
         self.bi = bi
         self.bj = bj
                 
@@ -363,6 +375,16 @@ class SudokuMainWindow(QMainWindow):
         self.selectedCell = None
         print('('+str(QMouseEvent.x())+', '+str(QMouseEvent.y())+') \
               ('+str(self.width())+','+str(self.height())+')')
+        
+    def keyPressEvent(self, event):
+        key = event.key()
+        keyStr = event.text()
+         
+        if QtCore.Qt.Key_1 <= key <= QtCore.Qt.Key_9 and self.selectedCell:
+            self.selectedCell.UpdateValue(keyStr)
+            self.currBoard[self.selectedCell.i][self.selectedCell.j] = int(keyStr)
+    
+
 ###############################################################################
 
 
