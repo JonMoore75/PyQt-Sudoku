@@ -129,7 +129,7 @@ def Value2String(value):
     return str(value) if value is not 0 else ' '
     
 class Cell(QLabel):
-    selected = Signal(int, int)
+    selected = Signal(object)
     def __init__(self, parent, strValue, candSet, i, j):
         super(QLabel, self).__init__(strValue, parent)
         self.cellString = strValue
@@ -183,7 +183,7 @@ class Cell(QLabel):
         
     def mouseReleaseEvent(self, QMouseEvent):
         """ Prints the cell clicked on """
-        self.selected.emit(self.i, self.j)
+        self.selected.emit(self)#self.i, self.j)
         self.setStyleSheet("background-color: lightblue;")
 #        print ('Clicked on cell ('+str(self.i)+','+str(self.j)+'), with value '+self.cellString)
         
@@ -284,15 +284,12 @@ class SudokuMainWindow(QMainWindow):
         singleCandStepButton.clicked.connect(lambda: self.FillinSingleCandidatesStep())
         layout.addWidget(singleCandStepButton)
         
-    def CellClicked(self, i, j):    
+    def CellClicked(self, cell):
         if self.selectedCell:
             self.selectedCell.Deselect()
-
-        bi = i/3
-        bj = j/3       
-    
-        self.selectedCell = self.boxes[bi][bj].GetCell(i, j)
-        
+   
+        self.selectedCell = cell
+       
         print ('Clicked on cell ('+str(self.selectedCell.i)+','\
          +str(self.selectedCell.j)+'), with value '+self.selectedCell.cellString)
           
