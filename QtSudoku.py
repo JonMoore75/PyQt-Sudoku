@@ -95,6 +95,7 @@ def SolveCandidates(board):
     return candBoard
 
 def FindEmpty(board):
+    """ Find the first cell that is unknown empty """
     for i in range(0,9):
         for j in range(0,9):
             if board[i][j] == 0:
@@ -102,6 +103,7 @@ def FindEmpty(board):
     return None
 
 def SolvewBacktrack(board):
+    """ Solve the puzzle via the backtracking algorithm """
     foundEmpty = FindEmpty(board)
     
     if not foundEmpty:
@@ -191,26 +193,31 @@ class Cell(QLabel):
                     candStr = str(candValue) if candValue in candSet else ' '
                     cand = self.gridLayoutBox.itemAtPosition(i, j).widget()
                     cand.setText(candStr)
+                    
+    def ToggleCandidateNumber(self, i,j): 
+        """ Toggles the candidate number if under the mouse """                   
+        candValue = 3*i + j + 1
+        cand = self.gridLayoutBox.itemAtPosition(i, j).widget()
+        if cand.underMouse():
+            print candValue, cand.text()
+            candStr = str(candValue) if cand.text() == ' ' else ' '
+            cand.setText(candStr)
         
     def mouseReleaseEvent(self, QMouseEvent):
-        """ Prints the cell clicked on """
+        """ Handle cell being clicked on """
         self.selected.emit(self)
         
-        if self.property('selected'):
+        if self.property('selected') and self.cellString == ' ':
             for i in range(0,3):
                 for j in range(0,3):
-                    candValue = 3*i + j + 1
-                    cand = self.gridLayoutBox.itemAtPosition(i, j).widget()
-                    if cand.underMouse():
-                        print candValue, cand.text()
-                        candStr = str(candValue) if cand.text() == ' ' else ' '
-                        cand.setText(candStr)
-        else:
+                    self.ToggleCandidateNumber(i,j)
+        else: # Hightlight the cell in blue
             self.setProperty('selected', True)
             self.style().unpolish(self)
             self.style().polish(self)
     
     def Deselect(self):
+        """ If cell selected, deselect it """
         self.setProperty('selected', False)
         self.style().unpolish(self)
         self.style().polish(self)
@@ -227,6 +234,7 @@ class Box(QLabel):
         self.gridLayoutBox = QGridLayout() 
         self.setLayout(self.gridLayoutBox) 
         
+        # Setup the 9 child cells in this box
         for i in range(0,3):
             for j in range(0,3):
                 ci = bi*3 + i
@@ -245,16 +253,21 @@ class Box(QLabel):
         cell.UpdateCandidates(candSet)
         
     def GetCell(self, i,j):
+        """ Return the cell at coords i,j in the board """
         ci = i - 3*self.bi
         cj = j - 3*self.bj
+        if ci > 2 or cj >2 or ci < 0 or cj < 0:
+            raise ValueError('Asking for cell not in this box')
         return self.gridLayoutBox.itemAtPosition(ci, cj).widget()
                 
     def FillinCell(self, i, j, value):
-        """ Will fill in value in a cell if it is empty/unknown """        
+        """ Will fill in value in a cell if it is empty/unknown.
+        Assumes this is correct box """        
         cell = self.GetCell(i,j)
         cell.UpdateValue(Value2String(value))
         
     def ConnectCellstoWindow(self, ClickFunc):
+        """ Pass handler function for cell being clicked to each cell """
         for i in range(0,3):
             for j in range(0,3):
                 cell = self.gridLayoutBox.itemAtPosition(i, j).widget()
@@ -313,6 +326,8 @@ class SudokuMainWindow(QMainWindow):
         layout.addWidget(singleCandStepButton)
         
     def CellClicked(self, cell):
+        """ Handler function for a cell being clicked.  Makes sure only 1 cell
+        is selected at a time ie only 1 cell has focus for input. """
         if self.selectedCell and self.selectedCell is not cell:
             self.selectedCell.Deselect()
    
@@ -386,6 +401,7 @@ class SudokuMainWindow(QMainWindow):
             print 'Invalid'
         
     def mouseReleaseEvent(self, QMouseEvent):
+        """ If mouse clicked not on child widget """
         if self.selectedCell:
             self.selectedCell.Deselect()
         self.selectedCell = None
@@ -393,6 +409,8 @@ class SudokuMainWindow(QMainWindow):
               ('+str(self.width())+','+str(self.height())+')')
         
     def keyPressEvent(self, event):
+        """ Handles key presses.  If is a number key, update the value in selected
+        cell  """
         key = event.key()
         keyStr = event.text()
          
@@ -405,6 +423,7 @@ class SudokuMainWindow(QMainWindow):
 
 
 def run_app(origBoard):
+    """ Main application function """
     print 'Board is valid:', CheckValid(origBoard)
     
     candBoard = SolveCandidates(origBoard)
