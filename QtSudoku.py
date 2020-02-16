@@ -52,7 +52,7 @@ def CheckValid(board):
     return True
 
 def RemoveZeros(inputList):
-    """ Remove zeros from a list """
+    """ Remove zeros from a list, returns only filled in values """
     return list(filter(lambda a: a != 0, inputList))
 
 def GetCandidateList(board, i, j):
@@ -237,46 +237,10 @@ class Box(QLabel):
                 
         self.gridLayoutBox = QGridLayout() 
         self.setLayout(self.gridLayoutBox) 
-        
-        # Setup the 9 child cells in this box
-        for i in range(0,3):
-            for j in range(0,3):
-                ci = bi*3 + i
-                cj = bj*3 + j
-                strValue = Value2String(board[ci][cj])
-                candSet = candBoard[ci][cj]
-                cellLabel = Cell(self, strValue, candSet, ci, cj)
-                self.gridLayoutBox.addWidget(cellLabel, i, j)
+
+    def AddCell(self, cellQLabel, i, j):
+         self.gridLayoutBox.addWidget(cellQLabel, i, j)
                 
-    def UpdateCandidates(self, i, j, candSet):
-        """ Updates the valid candidates for empty/unknown cell """
-        ci = i - 3*self.bi
-        cj = j - 3*self.bj
-        
-        cell = self.gridLayoutBox.itemAtPosition(ci, cj).widget()
-        cell.UpdateCandidates(candSet)
-        
-    def GetCell(self, i,j):
-        """ Return the cell at coords i,j in the board """
-        ci = i - 3*self.bi
-        cj = j - 3*self.bj
-        if ci > 2 or cj >2 or ci < 0 or cj < 0:
-            raise ValueError('Asking for cell not in this box')
-        return self.gridLayoutBox.itemAtPosition(ci, cj).widget()
-                
-    def FillinCell(self, i, j, value):
-        """ Will fill in value in a cell if it is empty/unknown.
-        Assumes this is correct box """        
-        cell = self.GetCell(i,j)
-        cell.UpdateValue(Value2String(value))
-        
-    def ConnectCellstoWindow(self, ClickFunc):
-        """ Pass handler function for cell being clicked to each cell """
-        for i in range(0,3):
-            for j in range(0,3):
-                cell = self.gridLayoutBox.itemAtPosition(i, j).widget()
-                cell.ConnectCelltoWindow(ClickFunc)
-        
 #####################      
      
 class SudokuMainWindow(QMainWindow):
@@ -308,12 +272,23 @@ class SudokuMainWindow(QMainWindow):
         
     def CreateBoard(self, board, candBoard, parent, layout):
         """ Creates board display with initial board values and candidates """
-        self.boxes = [[None for _ in range(3)] for _ in range(3)]
+        boxes = [[None for _ in range(3)] for _ in range(3)]
+        
         for bi in range(0,3):
             for bj in range(0,3):
-                self.boxes[bi][bj] = Box(parent, board, candBoard, bi, bj)
-                self.boxes[bi][bj].ConnectCellstoWindow(self.CellClicked)
-                layout.addWidget(self.boxes[bi][bj], bi, bj)  
+                boxes[bi][bj] = Box(parent, board, candBoard, bi, bj)
+                layout.addWidget(boxes[bi][bj], bi, bj) 
+
+        self.cells = [[None for _ in range(9)] for _ in range(9)]
+                
+        for i in range(0,9):
+            for j in range(0,9):
+                candSet = candBoard[i][j]
+                bi, bj =  i/3, j/3
+                parentBox = boxes[bi][bj]
+                self.cells[i][j] = Cell(parentBox, Value2String(board[i][j]), candSet, i, j)
+                self.cells[i][j].ConnectCelltoWindow(self.CellClicked)
+                parentBox.AddCell(self.cells[i][j], i - 3*bi, j-3*bj)                
                 
     def CreateButtons(self, parent, layout):
         """ Create the buttons toolbar for solving options """
@@ -343,10 +318,9 @@ class SudokuMainWindow(QMainWindow):
                 
     def FillinCell(self, i, j, value):
         """ Will fill in value in a cell if it is empty/unknown """
-        bi = i/3
-        bj = j/3
         
-        self.boxes[bi][bj].FillinCell(i, j, value)
+        self.cells[i][j].UpdateValue(Value2String(value))
+
         
     def UpdateChangedCells(self, prevBoard, prevCandBoard):
         """ Update the display of changed cells """
@@ -356,12 +330,10 @@ class SudokuMainWindow(QMainWindow):
                     self.FillinCell(i, j, self.currBoard[i][j])
                 if len(prevCandBoard[i][j]) != len(self.candBoard[i][j]):
                     candSet = self.candBoard[i][j]
-                    bi = i/3
-                    bj = j/3
-                    self.boxes[bi][bj].UpdateCandidates(i, j, candSet)
+                    self.cells[i][j].UpdateCandidates(candSet)
  
     def Solve(self):
-        """ Placeholder for backtracking solver """
+        """ Solves the board using the backtracking alogorithm """
         prevBoard = deepcopy(self.currBoard)
         
         solved = SolvewBacktrack(self.currBoard)
@@ -417,7 +389,8 @@ class SudokuMainWindow(QMainWindow):
         cell  """
         key = event.key()
         keyStr = event.text()
-         
+        
+        # If number key pressed and we have a cell selected
         if QtCore.Qt.Key_1 <= key <= QtCore.Qt.Key_9 and self.selectedCell:
             self.selectedCell.UpdateValue(keyStr)
             self.currBoard[self.selectedCell.i][self.selectedCell.j] = int(keyStr)
