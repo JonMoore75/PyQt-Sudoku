@@ -31,6 +31,24 @@ def checkListForDuplicates(listOfElems):
     else:
         return True
     
+def CheckCellValid(board, i, j):
+    """ Check if no duplicate entries on any row, column or block """
+
+    row_i = board[i]
+    if checkListForDuplicates(RemoveZeros(row_i)):
+        return False
+        
+    col_j = [row[j] for row in board]
+    if checkListForDuplicates(RemoveZeros(col_j)):
+        return False
+        
+    bi, bj = i/3, j/3
+    block = [[board[bi*3 + ci][bj*3 + cj] for cj in range(0,3)] for ci in range(0,3)]
+    if checkListForDuplicates(RemoveZeros([c for row in block for c in row])):
+        return False
+            
+    return True
+    
 def CheckValid(board):
     """ Check if no duplicate entries on any row, column or block """
     for i in range(0,9):
@@ -139,15 +157,21 @@ class Cell(QLabel):
     def __init__(self, parent, strValue, candSet, i, j):
         super(QLabel, self).__init__(strValue, parent)
         self.cellString = strValue
+        self.i = i
+        self.j = j
 
         self.setStyleSheet("""
            Cell[selected="true"] {background-color: lightblue;}
            Cell[selected="false"] {background-color: white;}
            Cell[edit="true"] {color: darkgrey;}
            Cell[edit="false"] {color: black;}
+           Cell[invalid="true"] {color: red;}
             """)
         self.setProperty('selected', False)
-        self.setProperty('edit', False)
+        if strValue == ' ':
+            self.setProperty('edit', True)
+        else:
+            self.setProperty('edit', False)
         self.style().unpolish(self)
         self.style().polish(self)
         self.setAlignment(QtCore.Qt.AlignCenter)
@@ -155,37 +179,47 @@ class Cell(QLabel):
         self.candidatefont = QFont("Arial", 12)
 
         self.setFont(self.cellfont)
-        self.i = i
-        self.j = j
+        
+        self.gridLayoutBox = QGridLayout() 
+        self.setLayout(self.gridLayoutBox)
         
         if self.cellString == ' ':
-            self.gridLayoutBox = QGridLayout() 
-            self.setLayout(self.gridLayoutBox) 
-            for i in range(0,3):
-                for j in range(0,3):
-                    candValue = 3*i + j + 1
-                    candStr = str(candValue) if candValue in candSet else ' '
-                    candLabel = QLabel(candStr, self)
-                    candLabel.setFont(self.candidatefont)
-                    candLabel.setAttribute(Qt.WA_TranslucentBackground)
-                    self.gridLayoutBox.addWidget(candLabel, i, j)
+            self.CreateCandidates(candSet)
+            
+    def CreateCandidates(self, candSet=set()): 
+        """ Create grid of QLabel widgets to display the candidates """
+        for i in range(0,3):
+            for j in range(0,3):
+                candValue = 3*i + j + 1
+                candStr = str(candValue) if candValue in candSet else ' '
+                candLabel = QLabel(candStr, self)
+                candLabel.setFont(self.candidatefont)
+                candLabel.setAttribute(Qt.WA_TranslucentBackground)
+                self.gridLayoutBox.addWidget(candLabel, i, j)
                     
     def ConnectCelltoWindow(self, ClickFunc):
         self.selected.connect(ClickFunc)
-                    
+        
+    def CanEdit(self):
+        return self.property('edit')
+        
+    def SetValidity(self, isInvalid):
+        self.setProperty('invalid', isInvalid)
+        self.style().unpolish(self)
+        self.style().polish(self) 
+                   
     def UpdateValue(self, strValue):
         """ Will fill in value in a cell if it is empty/unknown """
-        if self.cellString == ' ' and strValue != ' ':
-            # Delete all candidate label widgets 
-            for i in reversed(range(self.gridLayoutBox.count())): 
-                self.gridLayoutBox.itemAt(i).widget().setParent(None)
-                
+        if self.CanEdit(): 
+            if strValue != ' ':
+                # Delete all candidate label widgets 
+                for i in reversed(range(self.gridLayoutBox.count())): 
+                    self.gridLayoutBox.itemAt(i).widget().setParent(None)
+            else:
+                self.CreateCandidates()
+                    
             self.setText(strValue)
             self.cellString = strValue
-            
-            self.setProperty('edit', True)
-            self.style().unpolish(self)
-            self.style().polish(self)
 
             
     def UpdateCandidates(self, candSet):
@@ -197,6 +231,13 @@ class Cell(QLabel):
                     candStr = str(candValue) if candValue in candSet else ' '
                     cand = self.gridLayoutBox.itemAtPosition(i, j).widget()
                     cand.setText(candStr)
+                    
+    def RemoveCandidate(self, value):
+        """ Removes candidate value from empty/unknown cell """
+        if self.cellString == ' ': 
+            ri, rj = (value-1)/3, (value-1) % 3
+            cand = self.gridLayoutBox.itemAtPosition(ri, rj).widget()
+            cand.setText(' ')
                     
     def ToggleCandidateNumber(self, i,j): 
         """ Toggles the candidate number if under the mouse """                   
@@ -232,8 +273,6 @@ class Box(QLabel):
     def __init__(self, parent, board, candBoard, bi, bj):
         super(QLabel, self).__init__(parent)
         self.setStyleSheet('background-color: lightgrey;')
-        self.bi = bi
-        self.bj = bj
                 
         self.gridLayoutBox = QGridLayout() 
         self.setLayout(self.gridLayoutBox) 
@@ -247,13 +286,22 @@ class SudokuMainWindow(QMainWindow):
     def __init__(self, board, candBoard):
         super(QMainWindow, self).__init__()
         
+        # Variables
+        self.origBoard = board
         self.currBoard = deepcopy(board)
         self.candBoard = deepcopy(candBoard)
- 
+        self.cells = [[None for _ in range(9)] for _ in range(9)]
+        self.selectedCell = None
+        
+        # Setup function calls
+        
+        # Setup Window
         self.setGeometry(500, 30, 1200, 900)    
         self.setWindowTitle("Simple Sudoku") 
         self.setStyleSheet("background-color: grey;")
         
+        # Create sudoku board display, with separate areas for board and
+        # GUI buttons
         centralWidget = QWidget(self)          
         self.setCentralWidget(centralWidget)   
         
@@ -268,7 +316,6 @@ class SudokuMainWindow(QMainWindow):
         outerLayout.addLayout(vLayout,2,9,3,3)
         self.CreateButtons(self, vLayout)
         
-        self.selectedCell = None
         
     def CreateBoard(self, board, candBoard, parent, layout):
         """ Creates board display with initial board values and candidates """
@@ -278,8 +325,6 @@ class SudokuMainWindow(QMainWindow):
             for bj in range(0,3):
                 boxes[bi][bj] = Box(parent, board, candBoard, bi, bj)
                 layout.addWidget(boxes[bi][bj], bi, bj) 
-
-        self.cells = [[None for _ in range(9)] for _ in range(9)]
                 
         for i in range(0,9):
             for j in range(0,9):
@@ -320,61 +365,80 @@ class SudokuMainWindow(QMainWindow):
         """ Will fill in value in a cell if it is empty/unknown """
         
         self.cells[i][j].UpdateValue(Value2String(value))
+        
+        
+    def RemoveCandidatesBasedonCellValue(self, i, j, value):
+        """ If have assigned a value to cell i,j remove candidates from block,
+        row and column of this cell """
+
+        bi, bj = i/3, j/3
+        block = [self.cells[bi*3 + ci][bj*3 + cj] for cj in range(0,3) for ci in range(0,3)]
+
+        for cell in block:
+            cell.RemoveCandidate(value)
+            
+        row_i = self.cells[i]
+        for cell in row_i:
+            cell.RemoveCandidate(value)
+
+        col_j = [row[j] for row in self.cells]                    
+        for cell in col_j:
+            cell.RemoveCandidate(value)
 
         
-    def UpdateChangedCells(self, prevBoard, prevCandBoard):
+    def UpdateChangedCells(self, prevBoard):
         """ Update the display of changed cells """
         for i in range(0,9):
             for j in range(0,9):
                 if prevBoard[i][j] != self.currBoard[i][j]:
                     self.FillinCell(i, j, self.currBoard[i][j])
-                if len(prevCandBoard[i][j]) != len(self.candBoard[i][j]):
-                    candSet = self.candBoard[i][j]
-                    self.cells[i][j].UpdateCandidates(candSet)
+                    self.RemoveCandidatesBasedonCellValue(i, j, self.currBoard[i][j])
  
     def Solve(self):
         """ Solves the board using the backtracking alogorithm """
-        prevBoard = deepcopy(self.currBoard)
-        
-        solved = SolvewBacktrack(self.currBoard)
-        
-        if not solved:
-            print 'No solution'
-        
-        self.UpdateChangedCells(prevBoard, self.candBoard)
-        if not CheckValid(self.currBoard):
-            print 'Invalid'
+        if CheckValid(self.currBoard):
+            prevBoard = deepcopy(self.currBoard)
+            
+            solved = SolvewBacktrack(self.currBoard)
+            
+            if not solved:
+                print 'No solution'
+            else:
+                self.UpdateChangedCells(prevBoard)
+                if not CheckValid(self.currBoard):
+                    print 'Invalid'
             
     def FillinSingleCandidatesStep(self):
         """ Look for cells with only 1 candidate and fill them in.
         Updates the candidates after finished """
         
-        prevBoard = deepcopy(self.currBoard)
-        prevCandBoard = deepcopy(self.candBoard)
-        
-        changed, self.currBoard, self.candBoard = FillSingleCandidates(self.currBoard, self.candBoard)
-        self.UpdateChangedCells(prevBoard, prevCandBoard)
-        
-        if not CheckValid(self.currBoard):
-            print 'Invalid'
+        if CheckValid(self.currBoard):
+            prevBoard = deepcopy(self.currBoard)
+            
+            changed, self.currBoard, self.candBoard = FillSingleCandidates(self.currBoard, self.candBoard)
+            if changed:
+                self.UpdateChangedCells(prevBoard)
+            
+            if not CheckValid(self.currBoard):
+                print 'Invalid'
 
         
     def FillinSingleCandidates(self):
         """ Look for cells with only 1 candidate and fill them in 
         Then update candidates and iterate until no more changes """
         
-        notdone = True
-        
-        prevBoard = deepcopy(self.currBoard)
-        prevCandBoard = deepcopy(self.candBoard)
-        
-        while notdone:
-            notdone, self.currBoard, self.candBoard = FillSingleCandidates(self.currBoard, self.candBoard)
-
-        self.UpdateChangedCells(prevBoard, prevCandBoard)
-                    
-        if not CheckValid(self.currBoard):
-            print 'Invalid'
+        if CheckValid(self.currBoard):
+            notdone = True
+            
+            prevBoard = deepcopy(self.currBoard)
+            
+            while notdone:
+                notdone, self.currBoard, self.candBoard = FillSingleCandidates(self.currBoard, self.candBoard)
+    
+            self.UpdateChangedCells(prevBoard)
+                        
+            if not CheckValid(self.currBoard):
+                print 'Invalid'
         
     def mouseReleaseEvent(self, QMouseEvent):
         """ If mouse clicked not on child widget such as a cell """
@@ -390,11 +454,32 @@ class SudokuMainWindow(QMainWindow):
         key = event.key()
         keyStr = event.text()
         
-        # If number key pressed and we have a cell selected
-        if QtCore.Qt.Key_1 <= key <= QtCore.Qt.Key_9 and self.selectedCell:
-            self.selectedCell.UpdateValue(keyStr)
-            self.currBoard[self.selectedCell.i][self.selectedCell.j] = int(keyStr)
-    
+        if self.selectedCell and self.selectedCell.CanEdit():
+        
+            # If number key pressed
+            if QtCore.Qt.Key_1 <= key <= QtCore.Qt.Key_9:
+                    
+                self.selectedCell.UpdateValue(keyStr)
+                self.currBoard[self.selectedCell.i][self.selectedCell.j] = int(keyStr)
+                
+                self.candBoard = SolveCandidates(self.currBoard)
+                
+                if not CheckCellValid(self.currBoard, self.selectedCell.i, self.selectedCell.j):
+                    self.selectedCell.SetValidity(isInvalid=True)
+                    print 'Invalid'
+                else:
+                    self.selectedCell.SetValidity(isInvalid=False)
+                    
+            if key == QtCore.Qt.Key_Backspace:
+                self.selectedCell.UpdateValue(' ')
+                self.currBoard[self.selectedCell.i][self.selectedCell.j] = 0
+                self.candBoard = SolveCandidates(self.currBoard)
+        
+                if not CheckCellValid(self.currBoard, self.selectedCell.i, self.selectedCell.j):
+                    self.selectedCell.SetValidity(isInvalid=True)
+                    print 'Invalid'
+                else:
+                    self.selectedCell.SetValidity(isInvalid=False)
 
 ###############################################################################
 # Main App function - creates the app and window then passes control to the 
@@ -470,4 +555,4 @@ if __name__ == "__main__":
     [0,7,3,9,0,8,0,0,0],
     [6,0,0,4,5,0,2,0,0]
     ]    
-    sys.exit(run_app(hardboard))
+    sys.exit(run_app(easyboard))
