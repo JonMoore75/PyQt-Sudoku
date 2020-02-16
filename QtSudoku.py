@@ -21,6 +21,9 @@ if hasattr(QtCore.Qt, 'AA_UseHighDpiPixmaps'):
 environ["QT_AUTO_SCREEN_SCALE_FACTOR"] = "1"
 
 ###############################################################################
+# Sudoku Model - These functions deal with the board, its candidates and 
+# solutions 
+
 def checkListForDuplicates(listOfElems):
     """ Check if given list contains any duplicates """
     if len(listOfElems) == len(set(listOfElems)):
@@ -124,6 +127,7 @@ def SolvewBacktrack(board):
     return False
 
 ###############################################################################
+# View - this is the pyQT5 GUI dealing with input and display
 
 def Value2String(value):
     return str(value) if value is not 0 else ' '
@@ -401,7 +405,7 @@ class SudokuMainWindow(QMainWindow):
             print 'Invalid'
         
     def mouseReleaseEvent(self, QMouseEvent):
-        """ If mouse clicked not on child widget """
+        """ If mouse clicked not on child widget such as a cell """
         if self.selectedCell:
             self.selectedCell.Deselect()
         self.selectedCell = None
@@ -420,7 +424,8 @@ class SudokuMainWindow(QMainWindow):
     
 
 ###############################################################################
-
+# Main App function - creates the app and window then passes control to the 
+# app GUI.  Returns when app quits
 
 def run_app(origBoard):
     """ Main application function """
