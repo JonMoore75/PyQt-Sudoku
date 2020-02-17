@@ -156,8 +156,29 @@ def SolvewBacktrack(board):
 def Value2String(value):
     return str(value) if value is not 0 else ' '
         
-#####################      
-  
+#####################     
+    
+class Candidate(QLabel):
+    def __init__(self, strValue, parent):
+        super(QLabel, self).__init__(strValue, parent)
+        self.setStyleSheet("""
+           Candidate[hilite="true"] {color: orange;}
+           Candidate[hilite="false"] {color: black;}
+            """)
+        
+        self.SetHilite(False)
+        
+        self.setFont(QFont("Arial", 12))
+        self.setAttribute(Qt.WA_TranslucentBackground)
+
+        
+    def SetHilite(self, isHilited):
+        self.setProperty('hilite', isHilited)
+        self.style().unpolish(self)
+        self.style().polish(self)
+        
+#####################
+        
 class Cell(QLabel):
     selected = Signal(object)
     def __init__(self, parent, strValue, candSet, i, j):
@@ -180,11 +201,10 @@ class Cell(QLabel):
             self.setProperty('edit', False)
         self.style().unpolish(self)
         self.style().polish(self)
+        
         self.setAlignment(QtCore.Qt.AlignCenter)
-        self.cellfont = QFont("Arial", 45, QFont.Bold) 
-        self.candidatefont = QFont("Arial", 12)
 
-        self.setFont(self.cellfont)
+        self.setFont(QFont("Arial", 45, QFont.Bold))
         
         self.gridLayoutBox = QGridLayout() 
         self.setLayout(self.gridLayoutBox)
@@ -198,9 +218,7 @@ class Cell(QLabel):
             for j in range(0,3):
                 candValue = 3*i + j + 1
                 candStr = str(candValue) if candValue in candSet else ' '
-                candLabel = QLabel(candStr, self)
-                candLabel.setFont(self.candidatefont)
-                candLabel.setAttribute(Qt.WA_TranslucentBackground)
+                candLabel = Candidate(candStr, self)
                 self.gridLayoutBox.addWidget(candLabel, i, j)
                     
     def ConnectCelltoWindow(self, ClickFunc):
@@ -236,15 +254,22 @@ class Cell(QLabel):
                 for j in range(0,3):
                     candValue = 3*i + j + 1
                     candStr = str(candValue) if candValue in candSet else ' '
-                    cand = self.gridLayoutBox.itemAtPosition(i, j).widget()
-                    cand.setText(candStr)
+                    candWidget = self.gridLayoutBox.itemAtPosition(i, j).widget()
+                    candWidget.setText(candStr)
                     
+    def HiliteCandidates(self, candSet):
+        if self.cellString == ' ':           
+            for cand in iter(candSet):
+                i, j = (cand-1)/3, (cand-1)%3
+                candWidget = self.gridLayoutBox.itemAtPosition(i, j).widget()
+                candWidget.SetHilite(True)    
+                
     def RemoveCandidate(self, value):
         """ Removes candidate value from empty/unknown cell """
         if self.cellString == ' ': 
-            ri, rj = (value-1)/3, (value-1) % 3
-            cand = self.gridLayoutBox.itemAtPosition(ri, rj).widget()
-            cand.setText(' ')
+            i, j = (value-1)/3, (value-1) % 3
+            candWidget = self.gridLayoutBox.itemAtPosition(i, j).widget()
+            candWidget.setText(' ')
                     
     def ToggleCandidateNumber(self, i,j): 
         """ Toggles the candidate number if under the mouse """                   
@@ -360,6 +385,10 @@ class SudokuMainWindow(QMainWindow):
         genCandButton.clicked.connect(lambda: self.RegenerateCandidates())
         layout.addWidget(genCandButton)
         
+        hiddenSingleButton = QPushButton('Highlight Hidden Singles')
+        hiddenSingleButton.clicked.connect(lambda: self.HighlightHiddenSingles())
+        layout.addWidget(hiddenSingleButton)
+                
     def CellClicked(self, cell):
         """ Handler function for a cell being clicked.  Makes sure only 1 cell
         is selected at a time ie only 1 cell has focus for input. """
@@ -471,6 +500,9 @@ class SudokuMainWindow(QMainWindow):
                 
         self.ShowInvalidCells(dups)
         
+    def HighlightHiddenSingles(self):
+        self.cells[0][0].HiliteCandidates(set([1]))
+        
     def RegenerateCandidates(self):
         self.candBoard = SolveCandidates(self.currBoard)
         
@@ -508,8 +540,7 @@ class SudokuMainWindow(QMainWindow):
             
             dups = FindDuplicates(self.currBoard)
             if not CheckValid(dups):
-                print 'Invalid'
-                print dups
+                print 'Invalid', dups
             
             self.ShowInvalidCells(dups)
                 
