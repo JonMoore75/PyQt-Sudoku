@@ -356,6 +356,10 @@ class SudokuMainWindow(QMainWindow):
         singleCandStepButton.clicked.connect(lambda: self.FillinSingleCandidatesStep())
         layout.addWidget(singleCandStepButton)
         
+        genCandButton = QPushButton('Re-generate Candidates')
+        genCandButton.clicked.connect(lambda: self.RegenerateCandidates())
+        layout.addWidget(genCandButton)
+        
     def CellClicked(self, cell):
         """ Handler function for a cell being clicked.  Makes sure only 1 cell
         is selected at a time ie only 1 cell has focus for input. """
@@ -467,6 +471,14 @@ class SudokuMainWindow(QMainWindow):
                 
         self.ShowInvalidCells(dups)
         
+    def RegenerateCandidates(self):
+        self.candBoard = SolveCandidates(self.currBoard)
+        
+        for i in range(0,9):
+            for j in range(0,9):
+                candSet = self.candBoard[i][j]     
+                self.cells[i][j].UpdateCandidates(candSet)
+                
     def mouseReleaseEvent(self, QMouseEvent):
         """ If mouse clicked not on child widget such as a cell """
         if self.selectedCell:
