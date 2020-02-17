@@ -26,51 +26,57 @@ environ["QT_AUTO_SCREEN_SCALE_FACTOR"] = "1"
 
 def checkListForDuplicates(listOfElems):
     """ Check if given list contains any duplicates """
-    if len(listOfElems) == len(set(listOfElems)):
-        return False
-    else:
-        return True
-    
-def CheckCellValid(board, i, j):
-    """ Check if no duplicate entries on any row, column or block """
+    return len(listOfElems) != len(set(listOfElems))
 
-    row_i = board[i]
-    if checkListForDuplicates(RemoveZeros(row_i)):
-        return False
-        
-    col_j = [row[j] for row in board]
-    if checkListForDuplicates(RemoveZeros(col_j)):
-        return False
-        
-    bi, bj = i/3, j/3
-    block = [[board[bi*3 + ci][bj*3 + cj] for cj in range(0,3)] for ci in range(0,3)]
-    if checkListForDuplicates(RemoveZeros([c for row in block for c in row])):
-        return False
-            
-    return True
+def FindRowDuplicates(board):
+    """ If any duplicates numbers by row return location as (i,j) pairs """
+    duplicates= []
     
-def CheckValid(board):
-    """ Check if no duplicate entries on any row, column or block """
     for i in range(0,9):
         row_i = board[i]
-        if checkListForDuplicates(RemoveZeros(row_i)):
-            return False
+        for n in range(1,10):
+            if row_i.count(n) > 1:
+                duplicates += [(i,j) for j,x in enumerate(board[i]) if x == n]
         
+    return duplicates
+            
+def FindColDuplicates(board):
+    """ If any duplicates numbers by column return location as (i,j) pairs """    
+    duplicates= []
+    
     for j in range(0,9):
         col_j = [row[j] for row in board]
-        if checkListForDuplicates(RemoveZeros(col_j)):
-            return False
-        
-    for bi in range(0,3):
-        for bj in range(0,3):
-            block = [[board[bi*3 + ci][bj*3 + cj] for cj in range(0,3)] for ci in range(0,3)]
-            if checkListForDuplicates(RemoveZeros([c for row in block for c in row])):
-                return False
+        for n in range(1,10):
+            if col_j.count(n) > 1:
+                duplicates += [(i,j) for i,x in enumerate(col_j) if x == n]
+    
+    return duplicates
+    
+def FindBlockDuplicates(board):
+    """ If any duplicates numbers by block return location as (i,j) pairs """
+    duplicates= []
+    
+    for b in range(0,9):
+        bi, bj = b/3, b%3
+        block = [board[bi*3 + ci][bj*3 + cj] for ci in range(0,3) for cj in range(0,3)]
+
+        for n in range(1,10):
+            if block.count(n) > 1:
+                duplicates += [(3*bi+k/3,3*bj+k%3) for k,x in enumerate(block) if x == n]
             
-    return True
+    return duplicates
+
+def FindDuplicates(board):
+    """ Find duplicate entries on any row, column or block """
+    return FindRowDuplicates(board) + \
+        FindColDuplicates(board) + \
+        FindBlockDuplicates(board)  
+        
+def CheckValid(dup):
+    return len(dup) == 0
 
 def RemoveZeros(inputList):
-    """ Remove zeros from a list, returns only filled in values """
+    """ Remove zeros from a list, returns only non-zero values """
     return list(filter(lambda a: a != 0, inputList))
 
 def GetCandidateList(board, i, j):
@@ -207,6 +213,7 @@ class Cell(QLabel):
         self.setProperty('invalid', isInvalid)
         self.style().unpolish(self)
         self.style().polish(self) 
+        
                    
     def UpdateValue(self, strValue):
         """ Will fill in value in a cell if it is empty/unknown """
@@ -385,7 +392,16 @@ class SudokuMainWindow(QMainWindow):
         for cell in col_j:
             cell.RemoveCandidate(value)
 
-        
+    def ResetAllCellsValid(self):
+        for i in range(0,9):
+            for j in range(0,9):
+                self.cells[i][j].SetValidity(isInvalid=False)
+    
+    def ShowInvalidCells(self, dups):
+        self.ResetAllCellsValid()
+        for dup in dups:
+            self.cells[dup[0]][dup[1]].SetValidity(isInvalid=True)
+                
     def UpdateChangedCells(self, prevBoard):
         """ Update the display of changed cells """
         for i in range(0,9):
@@ -396,7 +412,8 @@ class SudokuMainWindow(QMainWindow):
  
     def Solve(self):
         """ Solves the board using the backtracking alogorithm """
-        if CheckValid(self.currBoard):
+        dups = FindDuplicates(self.currBoard)
+        if CheckValid(dups):
             prevBoard = deepcopy(self.currBoard)
             
             solved = SolvewBacktrack(self.currBoard)
@@ -405,29 +422,36 @@ class SudokuMainWindow(QMainWindow):
                 print 'No solution'
             else:
                 self.UpdateChangedCells(prevBoard)
-                if not CheckValid(self.currBoard):
+                
+                dups = FindDuplicates(self.currBoard)
+                if not CheckValid(dups):
                     print 'Invalid'
+                    
+        self.ShowInvalidCells(dups)
             
     def FillinSingleCandidatesStep(self):
         """ Look for cells with only 1 candidate and fill them in.
         Updates the candidates after finished """
-        
-        if CheckValid(self.currBoard):
+        dups = FindDuplicates(self.currBoard)
+        if CheckValid(dups):
             prevBoard = deepcopy(self.currBoard)
             
             changed, self.currBoard, self.candBoard = FillSingleCandidates(self.currBoard, self.candBoard)
             if changed:
                 self.UpdateChangedCells(prevBoard)
             
-            if not CheckValid(self.currBoard):
+            dups = FindDuplicates(self.currBoard)
+            if not CheckValid(dups):
                 print 'Invalid'
+                
+        self.ShowInvalidCells(dups)
 
         
     def FillinSingleCandidates(self):
         """ Look for cells with only 1 candidate and fill them in 
         Then update candidates and iterate until no more changes """
-        
-        if CheckValid(self.currBoard):
+        dups = FindDuplicates(self.currBoard)
+        if CheckValid(dups):
             notdone = True
             
             prevBoard = deepcopy(self.currBoard)
@@ -437,8 +461,11 @@ class SudokuMainWindow(QMainWindow):
     
             self.UpdateChangedCells(prevBoard)
                         
-            if not CheckValid(self.currBoard):
+            dups = FindDuplicates(self.currBoard)
+            if not CheckValid(dups):
                 print 'Invalid'
+                
+        self.ShowInvalidCells(dups)
         
     def mouseReleaseEvent(self, QMouseEvent):
         """ If mouse clicked not on child widget such as a cell """
@@ -457,29 +484,23 @@ class SudokuMainWindow(QMainWindow):
         if self.selectedCell and self.selectedCell.CanEdit():
         
             # If number key pressed
-            if QtCore.Qt.Key_1 <= key <= QtCore.Qt.Key_9:
-                    
+            if QtCore.Qt.Key_1 <= key <= QtCore.Qt.Key_9:                    
                 self.selectedCell.UpdateValue(keyStr)
                 self.currBoard[self.selectedCell.i][self.selectedCell.j] = int(keyStr)
-                
                 self.candBoard = SolveCandidates(self.currBoard)
-                
-                if not CheckCellValid(self.currBoard, self.selectedCell.i, self.selectedCell.j):
-                    self.selectedCell.SetValidity(isInvalid=True)
-                    print 'Invalid'
-                else:
-                    self.selectedCell.SetValidity(isInvalid=False)
                     
             if key == QtCore.Qt.Key_Backspace:
                 self.selectedCell.UpdateValue(' ')
                 self.currBoard[self.selectedCell.i][self.selectedCell.j] = 0
                 self.candBoard = SolveCandidates(self.currBoard)
-        
-                if not CheckCellValid(self.currBoard, self.selectedCell.i, self.selectedCell.j):
-                    self.selectedCell.SetValidity(isInvalid=True)
-                    print 'Invalid'
-                else:
-                    self.selectedCell.SetValidity(isInvalid=False)
+            
+            dups = FindDuplicates(self.currBoard)
+            if not CheckValid(dups):
+                print 'Invalid'
+                print dups
+            
+            self.ShowInvalidCells(dups)
+                
 
 ###############################################################################
 # Main App function - creates the app and window then passes control to the 
@@ -487,7 +508,7 @@ class SudokuMainWindow(QMainWindow):
 
 def run_app(origBoard):
     """ Main application function """
-    print 'Board is valid:', CheckValid(origBoard)
+    print 'Board is valid:', CheckValid(FindDuplicates(origBoard))
     
     candBoard = SolveCandidates(origBoard)
 
@@ -515,14 +536,14 @@ def UnitTests():
     ]
     
     testboard[4][4] = 3    
-    print 'Check valid via Row Duplicate Test. Should be False', CheckValid(testboard)
+    print 'Check valid via Row Duplicate Test. Should be False', CheckValid(FindDuplicates(testboard))
     
     testboard[4][4] = 7
-    print 'Check valid via Col Duplicate Test. Should be False', CheckValid(testboard)
+    print 'Check valid via Col Duplicate Test. Should be False', CheckValid(FindDuplicates(testboard))
     
     testboard[4][4] = 5
     testboard[8][8] = 1
-    print 'Check valid via Block Duplicate Test. Should be False', CheckValid(testboard)
+    print 'Check valid via Block Duplicate Test. Should be False', CheckValid(FindDuplicates(testboard))
     
     print '######### End Unit Tests #############'
 
