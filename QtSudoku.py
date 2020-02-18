@@ -73,6 +73,9 @@ def FindDuplicates(board):
         FindBlockDuplicates(board)  
         
 def CheckValid(dup):
+    """ Pass in list of duplicates via dup (output of FindDuplicates()).  If 
+    no duplicates then the board is valid.  This does not indicate if the 
+    board has a unique solution """
     return len(dup) == 0
 
 def RemoveZeros(inputList):
@@ -150,6 +153,61 @@ def SolvewBacktrack(board):
         
     return False
 
+def HiddenSingles(board, candBoard):
+    """ Find hidden singles, ie situations where a number has only one cell 
+    it can go in on a row, column or block """
+    values = []
+    
+    # Rows
+    for i in range(0,9):
+        row_i = board[i]
+        c_row_i = candBoard[i]
+        
+        for n in range(1,10):
+            count = 0
+            idx = None
+            for j in range(0,9):
+                if row_i[j] == 0 and n in c_row_i[j]:
+                    count += 1
+                    idx = j
+            
+            if count == 1:
+                values += [(i,idx,n)]
+    # Columns         
+    for j in range(0,9):
+        col_j = [row[j] for row in board]
+        c_col_j = [row[j] for row in candBoard]
+        
+        for n in range(1,10):
+            count = 0
+            idx = None
+            for i in range(0,9):
+                if col_j[i] == 0 and n in c_col_j[i]:
+                    count += 1
+                    idx = i
+            
+            if count == 1:
+                values += [(idx,j,n)]
+    #Block
+    for b in range(0,9):
+        bi, bj = b/3, b%3
+        block = [board[bi*3 + ci][bj*3 + cj] for ci in range(0,3) for cj in range(0,3)]
+        c_block = [candBoard[bi*3 + ci][bj*3 + cj] for ci in range(0,3) for cj in range(0,3)]
+
+        for n in range(1,10):
+            count = 0
+            idx = None
+            for k in range(0,9):
+                if block[k] == 0 and n in c_block[k]:
+                    count += 1
+                    idx = k
+                    
+            if count == 1:
+                values += [(3*bi + idx / 3, 3*bj + idx % 3, n)]    
+                
+    return values
+    
+
 ###############################################################################
 # View - this is the pyQT5 GUI dealing with input and display
 
@@ -173,6 +231,7 @@ class Candidate(QLabel):
 
         
     def SetHilite(self, isHilited):
+        """ Set or remove highlight for this candidate """
         self.setProperty('hilite', isHilited)
         self.style().unpolish(self)
         self.style().polish(self)
@@ -258,6 +317,7 @@ class Cell(QLabel):
                     candWidget.setText(candStr)
                     
     def HiliteCandidates(self, candSet):
+        """ Highlight candidates in this cell given by candSet """
         if self.cellString == ' ':           
             for cand in iter(candSet):
                 i, j = (cand-1)/3, (cand-1)%3
@@ -426,11 +486,14 @@ class SudokuMainWindow(QMainWindow):
             cell.RemoveCandidate(value)
 
     def ResetAllCellsValid(self):
+        """ Remove indication of invalid cells """
         for i in range(0,9):
             for j in range(0,9):
                 self.cells[i][j].SetValidity(isInvalid=False)
     
     def ShowInvalidCells(self, dups):
+        """ Highlight cells that are a duplicate of that number in row, column 
+        or block.  List of duplicates passed in as list of tuple (i,j) pairs. """
         self.ResetAllCellsValid()
         for dup in dups:
             self.cells[dup[0]][dup[1]].SetValidity(isInvalid=True)
@@ -501,9 +564,15 @@ class SudokuMainWindow(QMainWindow):
         self.ShowInvalidCells(dups)
         
     def HighlightHiddenSingles(self):
-        self.cells[0][0].HiliteCandidates(set([1]))
+        hiddenSingles = HiddenSingles(self.currBoard, self.candBoard)
+        
+        for hiddenSingle in hiddenSingles:
+            i,j,n = hiddenSingle
+            self.cells[i][j].HiliteCandidates(set([n]))
         
     def RegenerateCandidates(self):
+        """ Reset the displayed candidates to those based on those that are 
+        valid (ie avoid duplicates)"""
         self.candBoard = SolveCandidates(self.currBoard)
         
         for i in range(0,9):
@@ -619,4 +688,4 @@ if __name__ == "__main__":
     [0,7,3,9,0,8,0,0,0],
     [6,0,0,4,5,0,2,0,0]
     ]    
-    sys.exit(run_app(easyboard))
+    sys.exit(run_app(hardboard))
