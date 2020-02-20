@@ -206,8 +206,116 @@ def HiddenSingles(board, candBoard):
                 values += [(3*bi + idx / 3, 3*bj + idx % 3, n)]    
                 
     return values
-    
 
+
+def PointingPairs(board, candBoard):
+    values = []
+    
+    # Rows
+    for i in range(0,9):
+        row_i = board[i]
+        c_row_i = candBoard[i]
+        
+        for n in range(1,10):
+            count = 0
+            idx = []
+            for j in range(0,9):
+                if row_i[j] == 0 and n in c_row_i[j]:
+                    count += 1
+                    idx += [j]
+            
+            if count == 2:
+                j1, j2 = idx[0], idx[1]
+                if j1/3 == j2/3:
+                    values += [(n, i, j1, i, j2)]
+                    
+    # Columns         
+    for j in range(0,9):
+        col_j = [row[j] for row in board]
+        c_col_j = [row[j] for row in candBoard]
+        
+        for n in range(1,10):
+            count = 0
+            idx = []
+            for i in range(0,9):
+                if col_j[i] == 0 and n in c_col_j[i]:
+                    count += 1
+                    idx += [i]
+            
+            if count == 2:
+                i1, i2 = idx[0], idx[1]
+                if i1/3 == i2/3:
+                    values += [(n, i1, j, i2, j)]
+    
+    return values
+    
+def Pairs(board, candBoard):
+    values = []
+    
+    # Rows
+    for i in range(0,9):
+        pairs = []
+        pair_loc = []
+        
+        c_row_i = candBoard[i]
+        
+        for j in range(0,9):
+            if len(c_row_i[j]) == 2:
+                it = iter(c_row_i[j])
+                a,b = next(it), next(it)
+                
+                for k, pair in enumerate(pairs):
+                    if (a,b) == pair:
+                        values += [(a,b, i, pair_loc[k], i, j)]
+                
+                pairs += [(a,b)]
+                pair_loc += [j]
+                
+    # Columnss
+    for j in range(0,9):
+        pairs = []
+        pair_loc = []
+        
+        c_col_j = [row[j] for row in candBoard]
+        
+        for i in range(0,9):
+            if len(c_col_j[i]) == 2:
+                it = iter(c_col_j[i])
+                a,b = next(it), next(it)
+                
+                for k, pair in enumerate(pairs):
+                    if (a,b) == pair:
+                        values +=[(a,b, pair_loc[k], j, i, j)]
+                
+                pairs += [(a,b)]
+                pair_loc += [i]
+                
+    # Blocks
+    for b in range(0,9):
+        pairs = []
+        pair_loc = []
+        
+        bi, bj = b/3, b%3
+        c_block = [candBoard[bi*3 + ci][bj*3 + cj] for ci in range(0,3) for cj in range(0,3)]
+
+        for k in range(0,9):
+            if len(c_block[k]) == 2:
+                it = iter(c_block[k])
+                a,b = next(it), next(it)
+                i,j = 3*bi + k / 3, 3*bj + k % 3
+                
+                print a,b, i, j
+                
+                for k, pair in enumerate(pairs):
+                    if (a,b) == pair:
+                        values += [(a,b, pair_loc[k][0], pair_loc[k][1], i, j)]
+                
+                pairs += [(a,b)]
+                pair_loc += [(i,j)]
+            
+    return values
+            
+    
 ###############################################################################
 # View - this is the pyQT5 GUI dealing with input and display
 
@@ -322,7 +430,15 @@ class Cell(QLabel):
             for cand in iter(candSet):
                 i, j = (cand-1)/3, (cand-1)%3
                 candWidget = self.gridLayoutBox.itemAtPosition(i, j).widget()
-                candWidget.SetHilite(True)    
+                candWidget.SetHilite(True)   
+                
+    def ClearHilites(self):
+        pass
+        if self.cellString == ' ':           
+            for cand in range(1,10):
+                i, j = (cand-1)/3, (cand-1)%3
+                candWidget = self.gridLayoutBox.itemAtPosition(i, j).widget()
+                candWidget.SetHilite(False) 
                 
     def RemoveCandidate(self, value):
         """ Removes candidate value from empty/unknown cell """
@@ -433,9 +549,9 @@ class SudokuMainWindow(QMainWindow):
         solveButton.clicked.connect(lambda: self.Solve())
         layout.addWidget(solveButton)
         
-        singleCandButton = QPushButton('Fill Single Candidates')
-        singleCandButton.clicked.connect(lambda: self.FillinSingleCandidates())
-        layout.addWidget(singleCandButton)
+#        singleCandButton = QPushButton('Fill Single Candidates')
+#        singleCandButton.clicked.connect(lambda: self.FillinSingleCandidates())
+#        layout.addWidget(singleCandButton)
 
         singleCandStepButton = QPushButton('Fill Single Candidates - Step')
         singleCandStepButton.clicked.connect(lambda: self.FillinSingleCandidatesStep())
@@ -448,6 +564,14 @@ class SudokuMainWindow(QMainWindow):
         hiddenSingleButton = QPushButton('Highlight Hidden Singles')
         hiddenSingleButton.clicked.connect(lambda: self.HighlightHiddenSingles())
         layout.addWidget(hiddenSingleButton)
+        
+        nakedPairButton = QPushButton('Highlight Naked Pairs')
+        nakedPairButton.clicked.connect(lambda: self.HighlightNakedPairs())
+        layout.addWidget(nakedPairButton) 
+        
+        pointPairButton = QPushButton('Highlight Pointing Pairs')
+        pointPairButton.clicked.connect(lambda: self.HighlightPointingPairs())
+        layout.addWidget(pointPairButton)
                 
     def CellClicked(self, cell):
         """ Handler function for a cell being clicked.  Makes sure only 1 cell
@@ -563,12 +687,38 @@ class SudokuMainWindow(QMainWindow):
                 
         self.ShowInvalidCells(dups)
         
-    def HighlightHiddenSingles(self):
-        hiddenSingles = HiddenSingles(self.currBoard, self.candBoard)
+    def ClearHighlights(self):
+        for i in range(0,9):
+            for j in range(0,9):
+                self.cells[i][j].ClearHilites()
         
+    def HighlightHiddenSingles(self):
+        self.ClearHighlights()
+        hiddenSingles = HiddenSingles(self.currBoard, self.candBoard)
+                
         for hiddenSingle in hiddenSingles:
             i,j,n = hiddenSingle
             self.cells[i][j].HiliteCandidates(set([n]))
+            
+    def HighlightNakedPairs(self):
+        self.ClearHighlights()
+        pairSets = Pairs(self.currBoard, self.candBoard)
+        
+        for pairSet in pairSets:
+            a,b,i1,j1,i2,j2 = pairSet
+            self.cells[i1][j1].HiliteCandidates(set([a,b]))
+            self.cells[i2][j2].HiliteCandidates(set([a,b]))
+            
+    def HighlightPointingPairs(self):
+        self.ClearHighlights()
+        
+        pairSets = PointingPairs(self.currBoard, self.candBoard)
+        
+        for pairSet in pairSets:
+            n,i1,j1,i2,j2 = pairSet
+            self.cells[i1][j1].HiliteCandidates(set([n]))
+            self.cells[i2][j2].HiliteCandidates(set([n]))
+
         
     def RegenerateCandidates(self):
         """ Reset the displayed candidates to those based on those that are 
@@ -578,7 +728,7 @@ class SudokuMainWindow(QMainWindow):
         for i in range(0,9):
             for j in range(0,9):
                 candSet = self.candBoard[i][j]     
-                self.cells[i][j].UpdateCandidates(candSet)
+                self.cells[i][j].UpdateCandidates(candSet)       
                 
     def mouseReleaseEvent(self, QMouseEvent):
         """ If mouse clicked not on child widget such as a cell """
@@ -688,4 +838,16 @@ if __name__ == "__main__":
     [0,7,3,9,0,8,0,0,0],
     [6,0,0,4,5,0,2,0,0]
     ]    
-    sys.exit(run_app(hardboard))
+    
+    obsboard=[
+    [0,7,0,0,0,0,9,1,6],
+    [4,5,1,3,6,9,7,8,2],
+    [0,6,9,0,0,1,3,5,4],
+    [0,0,7,0,0,6,1,0,8],
+    [0,0,8,0,0,0,6,0,0],
+    [6,0,0,1,9,8,0,0,0],
+    [0,0,6,9,0,0,8,0,0],
+    [7,8,0,6,1,2,0,3,9],
+    [9,3,0,4,8,7,0,6,1],
+    ]
+    sys.exit(run_app(obsboard))
