@@ -280,6 +280,14 @@ class SudokuMainWindow(QMainWindow):
         pointPairButton = QPushButton('Highlight Pointing Pairs')
         pointPairButton.clicked.connect(lambda: self.HighlightPointingPairs())
         layout.addWidget(pointPairButton)
+        
+        boxlinePairButton = QPushButton('Highlight Box-Line Pairs')
+        boxlinePairButton.clicked.connect(lambda: self.HighlightBoxLinePairs())
+        layout.addWidget(boxlinePairButton)
+        
+        clearHiliteButton = QPushButton('Clear Highlights')
+        clearHiliteButton.clicked.connect(lambda: self.ClearHighlights())
+        layout.addWidget(clearHiliteButton)
                 
     def CellClicked(self, cell):
         """ Handler function for a cell being clicked.  Makes sure only 1 cell
@@ -426,7 +434,15 @@ class SudokuMainWindow(QMainWindow):
             n,i1,j1,i2,j2 = pairSet
             self.cells[i1][j1].HiliteCandidates(set([n]))
             self.cells[i2][j2].HiliteCandidates(set([n]))
-
+            
+    def HighlightBoxLinePairs(self):
+        self.ClearHighlights()
+        pairSets = sd.BoxLinePairs(self.currBoard, self.candBoard)
+        
+        for pairSet in pairSets:
+            n,i1,j1,i2,j2 = pairSet
+            self.cells[i1][j1].HiliteCandidates(set([n]))
+            self.cells[i2][j2].HiliteCandidates(set([n]))
         
     def RegenerateCandidates(self):
         """ Reset the displayed candidates to those based on those that are 
