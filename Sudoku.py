@@ -189,7 +189,7 @@ def HiddenSingles(board, candBoard):
     return values
 
 def FindNakedPair(candBoard, ElemFunc, CoordFunc):
-    values = []
+    values, rvalues = [], []
     
     # Search through 9 cell element (row, column or block)
     for e in range(0,9):
@@ -216,26 +216,26 @@ def FindNakedPair(candBoard, ElemFunc, CoordFunc):
                 pairs += [(a,b)]
                 pair_loc += [(i,j)]
             
-    return values
+    return values, rvalues
 
 def NakedPairs(board, candBoard):
     # Rows
-    values = FindNakedPair(candBoard, RowCells, lambda b,k: (b,k))
+    valuesR, rvaluesR = FindNakedPair(candBoard, RowCells, lambda b,k: (b,k))
                 
     # Columns
-    values += FindNakedPair(candBoard, ColCells, lambda b,k: (k,b))
+    valuesC, rvaluesC = FindNakedPair(candBoard, ColCells, lambda b,k: (k,b))
                 
     # Blocks
-    values += FindNakedPair(candBoard, BlockCells, BlockCoords)
+    valuesB, rvaluesB = FindNakedPair(candBoard, BlockCells, BlockCoords)
             
-    return values
+    return valuesR + valuesC + valuesB, rvaluesR + rvaluesC + rvaluesB
 
 def FindBoxLinePair(board, candBoard, ElemFunc, isRow):
     """ Finds all box-line pairs in columns or rows.
     Box-line pair is when a particular number can only be in two cells, 
     both of which are in the same block.  Means can eliminate that candidate in 
     that block in other rows/columns. """
-    values = []
+    values, rvalues = [], []
     
     # Search through 9 cell element (row, column or block)
     for e in range(0,9):
@@ -261,20 +261,20 @@ def FindBoxLinePair(board, candBoard, ElemFunc, isRow):
                     else:
                         i1, j1, i2, j2 = idx[0], e, idx[1], e
                     values += [(n, i1, j1, i2, j2)]
-    return values    
+    return values, rvalues    
     
 def BoxLinePairs(board, candBoard):
-    values = FindBoxLinePair(board, candBoard, RowCells, isRow=True)
-    values += FindBoxLinePair(board, candBoard, ColCells, isRow=False)
+    valuesR, rvaluesR = FindBoxLinePair(board, candBoard, RowCells, isRow=True)
+    valuesC, rvaluesC = FindBoxLinePair(board, candBoard, ColCells, isRow=False)
     
-    return values
+    return valuesR + valuesC, rvaluesR + rvaluesC
 
 def PointingPairs(board, candBoard):
     """ Finds all pointing pairs in either rows or columns.
     Pointing pair is only 2 cells a particular number can go in a block that
     happen to be in same row or column. Means can eliminate that number as 
     candidate in that row/column outside the box."""
-    values = []
+    values, rvalues = [], []
     
     # Loop through each block
     for b in range(0,9):
@@ -300,4 +300,4 @@ def PointingPairs(board, candBoard):
                 if i1 == i2 or j1 == j2:
                     values += [(n, i1, j1, i2, j2)]
                     
-    return values    
+    return values, rvalues    

@@ -419,7 +419,7 @@ class SudokuMainWindow(QMainWindow):
             
     def HighlightNakedPairs(self):
         self.ClearHighlights()
-        pairSets = sd.NakedPairs(self.currBoard, self.candBoard)
+        pairSets, rPairSets = sd.NakedPairs(self.currBoard, self.candBoard)
         
         for pairSet in pairSets:
             a,b,i1,j1,i2,j2 = pairSet
@@ -429,7 +429,7 @@ class SudokuMainWindow(QMainWindow):
     def HighlightPointingPairs(self):
         self.ClearHighlights()
         
-        pairSets = sd.PointingPairs(self.currBoard, self.candBoard)
+        pairSets, rPairSets = sd.PointingPairs(self.currBoard, self.candBoard)
         
         for pairSet in pairSets:
             n,i1,j1,i2,j2 = pairSet
@@ -438,7 +438,7 @@ class SudokuMainWindow(QMainWindow):
             
     def HighlightBoxLinePairs(self):
         self.ClearHighlights()
-        pairSets = sd.BoxLinePairs(self.currBoard, self.candBoard)
+        pairSets, rPairSets = sd.BoxLinePairs(self.currBoard, self.candBoard)
         
         for pairSet in pairSets:
             n,i1,j1,i2,j2 = pairSet
