@@ -561,4 +561,4 @@ if __name__ == "__main__":
     [7,8,0,6,1,2,0,3,9],
     [9,3,0,4,8,7,0,6,1],
     ]
-    sys.exit(run_app(obsboard))
+    sys.exit(run_app(hardboard))

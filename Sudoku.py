@@ -138,60 +138,6 @@ def SolvewBacktrack(board):
 
 ###############################################################################
 
-def HiddenSingles(board, candBoard):
-    """ Find hidden singles, ie situations where a number has only one cell 
-    it can go in on a row, column or block """
-    values = []
-    
-    # Rows
-    for i in range(0,9):
-        row_i = board[i]
-        c_row_i = candBoard[i]
-        
-        for n in range(1,10):
-            count = 0
-            idx = None
-            for j in range(0,9):
-                if row_i[j] == 0 and n in c_row_i[j]:
-                    count += 1
-                    idx = j
-            
-            if count == 1:
-                values += [(i,idx,n)]
-    # Columns         
-    for j in range(0,9):
-        col_j = [row[j] for row in board]
-        c_col_j = [row[j] for row in candBoard]
-        
-        for n in range(1,10):
-            count = 0
-            idx = None
-            for i in range(0,9):
-                if col_j[i] == 0 and n in c_col_j[i]:
-                    count += 1
-                    idx = i
-            
-            if count == 1:
-                values += [(idx,j,n)]
-    #Block
-    for b in range(0,9):
-        bi, bj = b/3, b%3
-        block = [board[bi*3 + ci][bj*3 + cj] for ci in range(0,3) for cj in range(0,3)]
-        c_block = [candBoard[bi*3 + ci][bj*3 + cj] for ci in range(0,3) for cj in range(0,3)]
-
-        for n in range(1,10):
-            count = 0
-            idx = None
-            for k in range(0,9):
-                if block[k] == 0 and n in c_block[k]:
-                    count += 1
-                    idx = k
-                    
-            if count == 1:
-                values += [(3*bi + idx / 3, 3*bj + idx % 3, n)]    
-                
-    return values
-
 def RowCells(board, i):
     return board[i]
 
@@ -205,6 +151,42 @@ def BlockCells(board, b):
 def BlockCoords(b,k):
     bi, bj = b/3, b%3
     return 3*bi + k / 3, 3*bj + k % 3
+
+def FindHiddenSingle(board, candBoard, ElemFunc, CoordFunc):
+    values = []
+
+    # Search through 9 cell element (row, column or block)
+    for e in range(0,9):
+        cells = ElemFunc(board, e) 
+        candsInElem = ElemFunc(candBoard, e) 
+
+        # Loop through all possible numbers
+        for n in range(1,10):
+            count = 0
+            idx = None
+            for c in range(0,9):
+                if cells[c] == 0 and n in candsInElem[c]:
+                    count += 1
+                    idx = c 
+                    
+            if count == 1:
+                i,j = CoordFunc(e,idx)
+                values += [(i,j,n)]
+                
+    return values
+
+def HiddenSingles(board, candBoard):
+    """ Find hidden singles, ie situations where a number has only one cell 
+    it can go in on a row, column or block """
+    
+    # Rows
+    values = FindHiddenSingle(board, candBoard, RowCells, lambda b,k: (b,k))
+    # Columns  
+    values += FindHiddenSingle(board, candBoard, ColCells, lambda b,k: (k,b))  
+    #Block
+    values += FindHiddenSingle(board, candBoard, BlockCells, BlockCoords)  
+                
+    return values
 
 def FindNakedPair(candBoard, ElemFunc, CoordFunc):
     values = []
@@ -249,6 +231,10 @@ def NakedPairs(board, candBoard):
     return values
 
 def FindBoxLinePair(board, candBoard, ElemFunc, isRow):
+    """ Finds all box-line pairs in columns or rows.
+    Box-line pair is when a particular number can only be in two cells, 
+    both of which are in the same block.  Means can eliminate that candidate in 
+    that block in other rows/columns. """
     values = []
     
     # Search through 9 cell element (row, column or block)
@@ -283,7 +269,11 @@ def BoxLinePairs(board, candBoard):
     
     return values
 
-def FindPointingPair(board, candBoard, ElemFunc, isRow):
+def PointingPairs(board, candBoard):
+    """ Finds all pointing pairs in either rows or columns.
+    Pointing pair is only 2 cells a particular number can go in a block that
+    happen to be in same row or column. Means can eliminate that number as 
+    candidate in that row/column outside the box."""
     values = []
     
     # Loop through each block
@@ -304,16 +294,10 @@ def FindPointingPair(board, candBoard, ElemFunc, isRow):
 
             # If only found number n twice in col or row, check if in same block
             if count == 2:
-                i1,j1 = idx[0] / 3, idx[0] % 3
-                i2,j2 = idx[1] / 3, idx[1] % 3
+                i1,j1 = BlockCoords(b,idx[0])
+                i2,j2 = BlockCoords(b,idx[1])
                 
                 if i1 == i2 or j1 == j2:
                     values += [(n, i1, j1, i2, j2)]
                     
     return values    
-
-def PointingPairs(board, candBoard):
-    values = FindPointingPair(board, candBoard, RowCells, isRow=True)
-    values += FindPointingPair(board, candBoard, ColCells, isRow=False)
-    
-    return values
