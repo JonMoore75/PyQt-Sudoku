@@ -36,14 +36,15 @@ class Candidate(QLabel):
     def __init__(self, strValue, parent):
         super(QLabel, self).__init__(strValue, parent)
         self.setStyleSheet("""
-           Candidate[hilite="true"] {color: orange;}
-           Candidate[hilite="false"] {color: black;}
+           Candidate[hilite="true"] {background-color: green;}
+           Candidate[hilite="false"] {background: transparent;}
             """)
         
         self.SetHilite(False)
         
         self.setFont(QFont("Arial", 12))
-        self.setAttribute(Qt.WA_TranslucentBackground)
+        self.setAlignment(QtCore.Qt.AlignCenter)
+#        self.setAttribute(Qt.WA_TranslucentBackground)
 
         
     def SetHilite(self, isHilited):
