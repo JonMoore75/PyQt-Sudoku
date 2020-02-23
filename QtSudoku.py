@@ -1,7 +1,7 @@
 import sys
 from copy import deepcopy
 from PyQt5 import QtCore, QtWidgets
-from PyQt5.QtCore import Qt, pyqtSignal, pyqtSlot
+from PyQt5.QtCore import pyqtSignal, pyqtSlot
 Signal, Slot = pyqtSignal, pyqtSlot 
 from PyQt5.QtWidgets import QMainWindow, QLabel, QGridLayout, QWidget, \
     QPushButton, QHBoxLayout, QVBoxLayout    
@@ -36,20 +36,21 @@ class Candidate(QLabel):
     def __init__(self, strValue, parent):
         super(QLabel, self).__init__(strValue, parent)
         self.setStyleSheet("""
-           Candidate[hilite="true"] {background-color: green;}
-           Candidate[hilite="false"] {background: transparent;}
+           Candidate[hilite="red"] {background-color: red;}
+           Candidate[hilite="green"] {background-color: lightgreen;}
+           Candidate[hilite="off"] {background: transparent;}
             """)
         
-        self.SetHilite(False)
+        self.SetHilite('off')
         
         self.setFont(QFont("Arial", 12))
         self.setAlignment(QtCore.Qt.AlignCenter)
 #        self.setAttribute(Qt.WA_TranslucentBackground)
 
         
-    def SetHilite(self, isHilited):
+    def SetHilite(self, hiliteColour='off'):
         """ Set or remove highlight for this candidate """
-        self.setProperty('hilite', isHilited)
+        self.setProperty('hilite', hiliteColour)
         self.style().unpolish(self)
         self.style().polish(self)
         
@@ -98,12 +99,16 @@ class Cell(QLabel):
                 self.gridLayoutBox.addWidget(candLabel, i, j)
                     
     def ConnectCelltoWindow(self, ClickFunc):
+        """ Specifies the function to pass events to when this cell is clicked on by the 
+        mouse """ 
         self.selected.connect(ClickFunc)
         
     def CanEdit(self):
         return self.property('edit')
         
     def SetValidity(self, isInvalid):
+        """ If the value in this cell conflicts with the value in another cell
+        then highlight it """
         self.setProperty('invalid', isInvalid)
         self.style().unpolish(self)
         self.style().polish(self) 
@@ -133,21 +138,21 @@ class Cell(QLabel):
                     candWidget = self.gridLayoutBox.itemAtPosition(i, j).widget()
                     candWidget.setText(candStr)
                     
-    def HiliteCandidates(self, candSet):
+    def HiliteCandidates(self, candSet, colour='green'):
         """ Highlight candidates in this cell given by candSet """
         if self.cellString == ' ':           
             for cand in iter(candSet):
                 i, j = (cand-1)/3, (cand-1)%3
                 candWidget = self.gridLayoutBox.itemAtPosition(i, j).widget()
-                candWidget.SetHilite(True)   
+                candWidget.SetHilite(colour)   
                 
     def ClearHilites(self):
-        pass
+        """ Remove any candidate highlighting from this cell """
         if self.cellString == ' ':           
             for cand in range(1,10):
                 i, j = (cand-1)/3, (cand-1)%3
                 candWidget = self.gridLayoutBox.itemAtPosition(i, j).widget()
-                candWidget.SetHilite(False) 
+                candWidget.SetHilite('off') 
                 
     def RemoveCandidate(self, value):
         """ Removes candidate value from empty/unknown cell """
@@ -405,11 +410,13 @@ class SudokuMainWindow(QMainWindow):
         self.ShowInvalidCells(dups)
         
     def ClearHighlights(self):
+        """ Remove all highlight from candidatyes """
         for i in range(0,9):
             for j in range(0,9):
                 self.cells[i][j].ClearHilites()
         
     def HighlightHiddenSingles(self):
+        """ Highlight where there are hidden single candidates """
         self.ClearHighlights()
         hiddenSingles = sd.HiddenSingles(self.currBoard, self.candBoard)
                 
@@ -418,32 +425,47 @@ class SudokuMainWindow(QMainWindow):
             self.cells[i][j].HiliteCandidates(set([n]))
             
     def HighlightNakedPairs(self):
+        """ Highlight where there are naked pair candidates """
         self.ClearHighlights()
-        pairSets, rPairSets = sd.NakedPairs(self.currBoard, self.candBoard)
+        pairSets, rCands = sd.NakedPairs(self.currBoard, self.candBoard)
         
         for pairSet in pairSets:
             a,b,i1,j1,i2,j2 = pairSet
             self.cells[i1][j1].HiliteCandidates(set([a,b]))
             self.cells[i2][j2].HiliteCandidates(set([a,b]))
             
+        self.HighlightRemovals(rCands)
+            
+    def HighlightRemovals(self, rCands):
+        """ Highlight candidates that can be removed based on list rCands """
+        for rCand in rCands:
+            n, i, j = rCand
+            self.cells[i][j].HiliteCandidates(set([n]), colour='red')
+            
     def HighlightPointingPairs(self):
+        """ Highlight where there are pointing pair candidates """
         self.ClearHighlights()
         
-        pairSets, rPairSets = sd.PointingPairs(self.currBoard, self.candBoard)
+        pairSets, rCands = sd.PointingPairs(self.currBoard, self.candBoard)
         
         for pairSet in pairSets:
             n,i1,j1,i2,j2 = pairSet
             self.cells[i1][j1].HiliteCandidates(set([n]))
             self.cells[i2][j2].HiliteCandidates(set([n]))
             
+        self.HighlightRemovals(rCands)
+            
     def HighlightBoxLinePairs(self):
+        """ Highlight where there are box-line pair candidates """
         self.ClearHighlights()
-        pairSets, rPairSets = sd.BoxLinePairs(self.currBoard, self.candBoard)
+        pairSets, rCands = sd.BoxLinePairs(self.currBoard, self.candBoard)
         
         for pairSet in pairSets:
             n,i1,j1,i2,j2 = pairSet
             self.cells[i1][j1].HiliteCandidates(set([n]))
             self.cells[i2][j2].HiliteCandidates(set([n]))
+
+        self.HighlightRemovals(rCands)
         
     def RegenerateCandidates(self):
         """ Reset the displayed candidates to those based on those that are 

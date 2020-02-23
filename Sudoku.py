@@ -144,15 +144,27 @@ def RowCells(board, i):
 def ColCells(board, j):
     return [row[j] for row in board]
 
-def BlockCells(board, b):
-    bi, bj = b/3, b%3
+def BlockCells_coords(board, bi, bj):
+    """ Get the cells of a block based on block coords """
     return [board[bi*3 + ci][bj*3 + cj] for ci in range(0,3) for cj in range(0,3)]
+
+def BlockCells(board, b):
+    """ Get the cells of a block, where block is labelled by number 0-9 in 
+    this pattern
+     0 1 2
+     3 4 5
+     6 7 8
+     """
+    bi, bj = b/3, b%3
+    return BlockCells_coords(board, bi, bj)
 
 def BlockCoords(b,k):
     bi, bj = b/3, b%3
     return 3*bi + k / 3, 3*bj + k % 3
 
 def FindHiddenSingle(board, candBoard, ElemFunc, CoordFunc):
+    """ Find if row, column or block has only 1 cell a particular number can
+    go into. """
     values = []
 
     # Search through 9 cell element (row, column or block)
@@ -188,7 +200,11 @@ def HiddenSingles(board, candBoard):
                 
     return values
 
-def FindNakedPair(candBoard, ElemFunc, CoordFunc):
+def FindNakedPair(board, candBoard, ElemFunc, CoordFunc):
+    """ Finds cells with just 2 candidates in a cell where that pattern is 
+    repeated  once in same row, block or column ie 1 2, 1 2
+    Means same values cannot be in other cells along that row, block or column 
+    """
     values, rvalues = [], []
     
     # Search through 9 cell element (row, column or block)
@@ -196,13 +212,13 @@ def FindNakedPair(candBoard, ElemFunc, CoordFunc):
         pairs = []
         pair_loc = []
         
-        cells = ElemFunc(candBoard, e) 
+        cands = ElemFunc(candBoard, e) 
         
         # Loop through each cell of element see if any pairs (cells with 2 cands)
         for c in range(0,9):
-            if len(cells[c]) == 2:
+            if len(cands[c]) == 2:
                 # Get the values of the pair (a,b) and record location (i,j)
-                it = iter(cells[c])
+                it = iter(cands[c])
                 a,b = next(it), next(it)
                 i,j = CoordFunc(e, c)
                 
@@ -211,6 +227,11 @@ def FindNakedPair(candBoard, ElemFunc, CoordFunc):
                     i1, j1 = pair_loc[p][0], pair_loc[p][1]
                     if (a,b) == pair:
                         values += [(a,b, i1, j1, i, j)]
+                        
+                        # Mark candidates with value n in same row/col/block for removal
+                        cells = ElemFunc(board, e)
+                        rvalues += RemovalCandidates(cells, cands, a, lambda k: CoordFunc(e,k), [(i1, j1), (i, j)])
+                        rvalues += RemovalCandidates(cells, cands, b, lambda k: CoordFunc(e,k), [(i1, j1), (i, j)])
                 
                 # Remember this pair
                 pairs += [(a,b)]
@@ -220,13 +241,13 @@ def FindNakedPair(candBoard, ElemFunc, CoordFunc):
 
 def NakedPairs(board, candBoard):
     # Rows
-    valuesR, rvaluesR = FindNakedPair(candBoard, RowCells, lambda b,k: (b,k))
+    valuesR, rvaluesR = FindNakedPair(board, candBoard, RowCells, lambda b,k: (b,k))
                 
     # Columns
-    valuesC, rvaluesC = FindNakedPair(candBoard, ColCells, lambda b,k: (k,b))
+    valuesC, rvaluesC = FindNakedPair(board, candBoard, ColCells, lambda b,k: (k,b))
                 
     # Blocks
-    valuesB, rvaluesB = FindNakedPair(candBoard, BlockCells, BlockCoords)
+    valuesB, rvaluesB = FindNakedPair(board, candBoard, BlockCells, BlockCoords)
             
     return valuesR + valuesC + valuesB, rvaluesR + rvaluesC + rvaluesB
 
@@ -261,6 +282,14 @@ def FindBoxLinePair(board, candBoard, ElemFunc, isRow):
                     else:
                         i1, j1, i2, j2 = idx[0], e, idx[1], e
                     values += [(n, i1, j1, i2, j2)]
+                                        
+                    # Mark candidates with value n in same block for removal
+                    bi, bj = i1/3,j1/3
+                    cells = BlockCells_coords(board, bi, bj)
+                    cands = BlockCells_coords(candBoard, bi, bj)
+                    LocFunc = lambda rc: (3*bi + rc / 3, 3*bj + rc % 3)
+                    rvalues += RemovalCandidates(cells, cands, n, LocFunc, [(i1, j1), (i2, j2)])
+                                        
     return values, rvalues    
     
 def BoxLinePairs(board, candBoard):
@@ -297,7 +326,35 @@ def PointingPairs(board, candBoard):
                 i1,j1 = BlockCoords(b,idx[0])
                 i2,j2 = BlockCoords(b,idx[1])
                 
-                if i1 == i2 or j1 == j2:
+                if i1 == i2 or j1 == j2: 
                     values += [(n, i1, j1, i2, j2)]
                     
-    return values, rvalues    
+                    # Mark candidates with value n in same row/col for removal
+                    cells = RowCells(board, i1) if i1 == i2 else ColCells(board, j1)
+                    cands = RowCells(candBoard, i1) if i1 == i2 else ColCells(candBoard, j1)
+                    LocFunc = lambda rc: (i1, rc) if i1 == i2 else (rc, j1)
+                    rvalues += RemovalCandidates(cells, cands, n, LocFunc, [(i1, j1), (i2, j2)])
+                    
+    return values, rvalues 
+
+def RemovalCandidates(cells, cands, n, LocFunc, exclList):
+    """ List the candidates to be marked for removal.  Based on a function 
+    LocFunc that translates the 0->9 value of rc to i,j cell coords, the 
+    number n to be removed and a list of cells excluded from removal.  The 
+    latter exclusion is for the cells that cause the removal (ie orig pointing
+    pair or similar) to avoid candidates causing their own removal.
+    """
+    rvalues = []
+    
+    # Loop through each cell of the block
+    for rc in range(0,9):
+        ri,rj = LocFunc(rc)
+#        print ri, rj
+        
+        if cells[rc] == 0 and n in cands[rc]:
+            if (ri,rj) not in exclList:
+                rvalues += [(n, ri, rj)]
+    
+    return rvalues
+                
+
