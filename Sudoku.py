@@ -229,9 +229,9 @@ def FindNakedPair(board, candBoard, ElemFunc, CoordFunc):
                         values += [(a,b, i1, j1, i, j)]
                         
                         # Mark candidates with value n in same row/col/block for removal
-                        cells = ElemFunc(board, e)
-                        rvalues += RemovalCandidates(cells, cands, a, lambda k: CoordFunc(e,k), [(i1, j1), (i, j)])
-                        rvalues += RemovalCandidates(cells, cands, b, lambda k: CoordFunc(e,k), [(i1, j1), (i, j)])
+                        rcells = ElemFunc(board, e)
+                        rvalues += RemovalCandidates(rcells, cands, a, lambda k: CoordFunc(e,k), [(i1, j1), (i, j)])
+                        rvalues += RemovalCandidates(rcells, cands, b, lambda k: CoordFunc(e,k), [(i1, j1), (i, j)])
                 
                 # Remember this pair
                 pairs += [(a,b)]
@@ -269,11 +269,11 @@ def FindBoxLinePair(board, candBoard, ElemFunc, isRow):
             idx = []
             
             # Loop through each cell of the element
-            for c in range(0,9):
+            for c in range(0,9):                   
                 if cells[c] == 0 and n in candsInElem[c]:
                     count += 1
                     idx += [c]
-            
+                                
             # If only found number n twice in col or row, check if in same block
             if count == 2:
                 if idx[0]/3 == idx[1]/3:
@@ -285,10 +285,10 @@ def FindBoxLinePair(board, candBoard, ElemFunc, isRow):
                                         
                     # Mark candidates with value n in same block for removal
                     bi, bj = i1/3,j1/3
-                    cells = BlockCells_coords(board, bi, bj)
-                    cands = BlockCells_coords(candBoard, bi, bj)
+                    rcells = BlockCells_coords(board, bi, bj)
+                    rcands = BlockCells_coords(candBoard, bi, bj)
                     LocFunc = lambda rc: (3*bi + rc / 3, 3*bj + rc % 3)
-                    rvalues += RemovalCandidates(cells, cands, n, LocFunc, [(i1, j1), (i2, j2)])
+                    rvalues += RemovalCandidates(rcells, rcands, n, LocFunc, [(i1, j1), (i2, j2)])
                                         
     return values, rvalues    
     
@@ -321,7 +321,7 @@ def PointingPairs(board, candBoard):
                     count += 1
                     idx += [c]
 
-            # If only found number n twice in col or row, check if in same block
+            # If only found number n twice in col or row, check if in same row/col
             if count == 2:
                 i1,j1 = BlockCoords(b,idx[0])
                 i2,j2 = BlockCoords(b,idx[1])
@@ -330,10 +330,10 @@ def PointingPairs(board, candBoard):
                     values += [(n, i1, j1, i2, j2)]
                     
                     # Mark candidates with value n in same row/col for removal
-                    cells = RowCells(board, i1) if i1 == i2 else ColCells(board, j1)
-                    cands = RowCells(candBoard, i1) if i1 == i2 else ColCells(candBoard, j1)
+                    rcells = RowCells(board, i1) if i1 == i2 else ColCells(board, j1)
+                    rcands = RowCells(candBoard, i1) if i1 == i2 else ColCells(candBoard, j1)
                     LocFunc = lambda rc: (i1, rc) if i1 == i2 else (rc, j1)
-                    rvalues += RemovalCandidates(cells, cands, n, LocFunc, [(i1, j1), (i2, j2)])
+                    rvalues += RemovalCandidates(rcells, rcands, n, LocFunc, [(i1, j1), (i2, j2)])
                     
     return values, rvalues 
 
