@@ -158,9 +158,12 @@ def BlockCells(board, b):
     bi, bj = b/3, b%3
     return BlockCells_coords(board, bi, bj)
 
+def BlockCoords_coords(bi, bj, k):
+    return 3*bi + k / 3, 3*bj + k % 3
+    
 def BlockCoords(b,k):
     bi, bj = b/3, b%3
-    return 3*bi + k / 3, 3*bj + k % 3
+    return BlockCoords_coords(bi, bj ,k)
 
 def FindHiddenSingle(board, candBoard, ElemFunc, CoordFunc):
     """ Find if row, column or block has only 1 cell a particular number can
@@ -337,6 +340,51 @@ def PointingPairs(board, candBoard):
                     
     return values, rvalues 
 
+def FindBoxTriples(board, candBoard, ElemFunc, CoordFunc):
+    values, rvalues = [], []
+    
+    for e in range(0,9):
+        cells = ElemFunc(board, e) 
+        cands = ElemFunc(candBoard, e) 
+        
+        for b in range(0,3):
+            tripCandSet = set()            
+            bs = 3*b
+            bf = bs + 3
+            if cells[bs:bf] == [0,0,0]:
+                for c in range(0,3):
+                    tripCandSet |=  cands[3*b + c]
+                    
+                if len(tripCandSet) == 3:
+                    trip_loc = [CoordFunc(e, 3*b + k) for k in range(0,3)]
+                    x, y, z = tripCandSet
+                    values += [tuple(tripCandSet)+tuple(trip_loc)]
+                             
+                    # Mark candidates with value n in same row/col for removal
+                    rcells = ElemFunc(board, e)
+                    rvalues += RemovalCandidates(rcells, cands, x, lambda k: CoordFunc(e,k), trip_loc)
+                    rvalues += RemovalCandidates(rcells, cands, y, lambda k: CoordFunc(e,k), trip_loc)
+                    rvalues += RemovalCandidates(rcells, cands, z, lambda k: CoordFunc(e,k), trip_loc)                       
+
+                    # Mark candidates with value n in same block for removal
+                    bi, bj = trip_loc[0][0]/3, trip_loc[0][1]/3 
+                    print bi, bj
+                    rbcells = BlockCells_coords(board, bi, bj)
+                    rbcands = BlockCells_coords(candBoard, bi, bj)
+                    rvalues += RemovalCandidates(rbcells, rbcands, x, lambda k: BlockCoords_coords(bi, bj, k), trip_loc)
+                    rvalues += RemovalCandidates(rbcells, rbcands, y, lambda k: BlockCoords_coords(bi, bj, k), trip_loc)
+                    rvalues += RemovalCandidates(rbcells, rbcands, z, lambda k: BlockCoords_coords(bi, bj, k), trip_loc)                       
+                        
+    return values, rvalues                 
+                 
+def BoxTriples(board, candBoard):
+    # Rows
+    valuesR, rvaluesR = FindBoxTriples(board, candBoard, RowCells, lambda b,k: (b,k))
+    # Columns 
+    valuesC, rvaluesC = FindBoxTriples(board, candBoard, ColCells, lambda b,k: (k,b)) 
+    
+    return valuesR + valuesC, rvaluesR + rvaluesC
+      
 def RemovalCandidates(cells, cands, n, LocFunc, exclList):
     """ List the candidates to be marked for removal.  Based on a function 
     LocFunc that translates the 0->9 value of rc to i,j cell coords, the 
@@ -349,7 +397,6 @@ def RemovalCandidates(cells, cands, n, LocFunc, exclList):
     # Loop through each cell of the block
     for rc in range(0,9):
         ri,rj = LocFunc(rc)
-#        print ri, rj
         
         if cells[rc] == 0 and n in cands[rc]:
             if (ri,rj) not in exclList:

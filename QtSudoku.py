@@ -291,9 +291,15 @@ class SudokuMainWindow(QMainWindow):
         boxlinePairButton.clicked.connect(lambda: self.HighlightBoxLinePairs())
         layout.addWidget(boxlinePairButton)
         
+        boxtriplePairButton = QPushButton('Highlight Box Triples')
+        boxtriplePairButton.clicked.connect(lambda: self.HighlightBoxTriples())
+        layout.addWidget(boxtriplePairButton)
+        
         clearHiliteButton = QPushButton('Clear Highlights')
         clearHiliteButton.clicked.connect(lambda: self.ClearHighlights())
         layout.addWidget(clearHiliteButton)
+        
+        
                 
     def CellClicked(self, cell):
         """ Handler function for a cell being clicked.  Makes sure only 1 cell
@@ -467,6 +473,22 @@ class SudokuMainWindow(QMainWindow):
 
         self.HighlightRemovals(rCands)
         
+    def HighlightBoxTriples(self):
+        """ Highlight where there are box triple candidates """
+        self.ClearHighlights()
+        trips, rCands = sd.BoxTriples(self.currBoard, self.candBoard)
+        
+        print trips
+        
+        for trip in trips:
+            print trip
+            a,b,c,(i1,j1),(i2,j2),(i3,j3) = trip
+            self.cells[i1][j1].HiliteCandidates(set([a,b,c]) & self.candBoard[i1][j1])
+            self.cells[i2][j2].HiliteCandidates(set([a,b,c]) & self.candBoard[i2][j2])
+            self.cells[i3][j3].HiliteCandidates(set([a,b,c]) & self.candBoard[i3][j3])
+            
+        self.HighlightRemovals(rCands)
+    
     def RegenerateCandidates(self):
         """ Reset the displayed candidates to those based on those that are 
         valid (ie avoid duplicates)"""
