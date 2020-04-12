@@ -142,7 +142,7 @@ class Cell(QLabel):
         """ Highlight candidates in this cell given by candSet """
         if self.cellString == ' ':           
             for cand in iter(candSet):
-                i, j = (cand-1)/3, (cand-1)%3
+                i, j = (cand-1)//3, (cand-1)%3
                 candWidget = self.gridLayoutBox.itemAtPosition(i, j).widget()
                 candWidget.SetHilite(colour)   
                 
@@ -150,14 +150,14 @@ class Cell(QLabel):
         """ Remove any candidate highlighting from this cell """
         if self.cellString == ' ':           
             for cand in range(1,10):
-                i, j = (cand-1)/3, (cand-1)%3
+                i, j = (cand-1)//3, (cand-1)%3
                 candWidget = self.gridLayoutBox.itemAtPosition(i, j).widget()
                 candWidget.SetHilite('off') 
                 
     def RemoveCandidate(self, value):
         """ Removes candidate value from empty/unknown cell """
         if self.cellString == ' ': 
-            i, j = (value-1)/3, (value-1) % 3
+            i, j = (value-1)//3, (value-1) % 3
             candWidget = self.gridLayoutBox.itemAtPosition(i, j).widget()
             candWidget.setText(' ')
                     
@@ -166,7 +166,7 @@ class Cell(QLabel):
         candValue = 3*i + j + 1
         cand = self.gridLayoutBox.itemAtPosition(i, j).widget()
         if cand.underMouse():
-            print candValue, cand.text()
+            print(candValue, cand.text())
             candStr = str(candValue) if cand.text() == ' ' else ' '
             cand.setText(candStr)
         
@@ -251,7 +251,7 @@ class SudokuMainWindow(QMainWindow):
         for i in range(0,9):
             for j in range(0,9):
                 candSet = candBoard[i][j]
-                bi, bj =  i/3, j/3
+                bi, bj =  i//3, j//3
                 parentBox = boxes[bi][bj]
                 self.cells[i][j] = Cell(parentBox, Value2String(board[i][j]), candSet, i, j)
                 self.cells[i][j].ConnectCelltoWindow(self.CellClicked)
@@ -323,7 +323,7 @@ class SudokuMainWindow(QMainWindow):
         """ If have assigned a value to cell i,j remove candidates from block,
         row and column of this cell """
 
-        bi, bj = i/3, j/3
+        bi, bj = i//3, j//3
         block = [self.cells[bi*3 + ci][bj*3 + cj] for cj in range(0,3) for ci in range(0,3)]
 
         for cell in block:
@@ -367,13 +367,13 @@ class SudokuMainWindow(QMainWindow):
             solved = sd.SolvewBacktrack(self.currBoard)
             
             if not solved:
-                print 'No solution'
+                print('No solution')
             else:
                 self.UpdateChangedCells(prevBoard)
                 
                 dups = sd.FindDuplicates(self.currBoard)
                 if not sd.CheckValid(dups):
-                    print 'Invalid'
+                    print('Invalid')
                     
         self.ShowInvalidCells(dups)
             
@@ -390,7 +390,7 @@ class SudokuMainWindow(QMainWindow):
             
             dups = sd.FindDuplicates(self.currBoard)
             if not sd.CheckValid(dups):
-                print 'Invalid'
+                print('Invalid')
                 
         self.ShowInvalidCells(dups)
 
@@ -411,7 +411,7 @@ class SudokuMainWindow(QMainWindow):
                         
             dups = sd.FindDuplicates(self.currBoard)
             if not sd.CheckValid(dups):
-                print 'Invalid'
+                print('Invalid')
                 
         self.ShowInvalidCells(dups)
         
@@ -478,10 +478,10 @@ class SudokuMainWindow(QMainWindow):
         self.ClearHighlights()
         trips, rCands = sd.BoxTriples(self.currBoard, self.candBoard)
         
-        print trips
+        print(trips)
         
         for trip in trips:
-            print trip
+            print(trip)
             a,b,c,(i1,j1),(i2,j2),(i3,j3) = trip
             self.cells[i1][j1].HiliteCandidates(set([a,b,c]) & self.candBoard[i1][j1])
             self.cells[i2][j2].HiliteCandidates(set([a,b,c]) & self.candBoard[i2][j2])
@@ -528,7 +528,7 @@ class SudokuMainWindow(QMainWindow):
             
             dups = sd.FindDuplicates(self.currBoard)
             if not sd.CheckValid(dups):
-                print 'Invalid', dups
+                print('Invalid', dups)
             
             self.ShowInvalidCells(dups)
                 
@@ -539,7 +539,7 @@ class SudokuMainWindow(QMainWindow):
 
 def run_app(origBoard):
     """ Main application function """
-    print 'Board is valid:', sd.CheckValid(sd.FindDuplicates(origBoard))
+    print('Board is valid:', sd.CheckValid(sd.FindDuplicates(origBoard)))
     
     candBoard = sd.SolveCandidates(origBoard)
 
@@ -553,7 +553,7 @@ def run_app(origBoard):
 ###############################################################################
 
 def UnitTests():
-    print '######### Unit Tests #############'
+    print('######### Unit Tests #############')
     testboard = [
     [7,8,0,4,0,0,1,2,0],
     [6,0,0,0,7,5,0,0,9],
@@ -567,19 +567,19 @@ def UnitTests():
     ]
     
     testboard[4][4] = 3    
-    print 'Check valid via Row Duplicate Test. Should be False', \
-        sd.CheckValid(sd.FindDuplicates(testboard))
+    print('Check valid via Row Duplicate Test. Should be False', \
+        sd.CheckValid(sd.FindDuplicates(testboard)))
     
     testboard[4][4] = 7
-    print 'Check valid via Col Duplicate Test. Should be False', \
-        sd.CheckValid(sd.FindDuplicates(testboard))
+    print('Check valid via Col Duplicate Test. Should be False', \
+        sd.CheckValid(sd.FindDuplicates(testboard)))
     
     testboard[4][4] = 5
     testboard[8][8] = 1
-    print 'Check valid via Block Duplicate Test. Should be False', \
-        sd.CheckValid(sd.FindDuplicates(testboard))
+    print('Check valid via Block Duplicate Test. Should be False', \
+        sd.CheckValid(sd.FindDuplicates(testboard)))
     
-    print '######### End Unit Tests #############'
+    print('######### End Unit Tests #############')
 
 ###############################################################################
                 

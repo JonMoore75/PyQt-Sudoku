@@ -37,12 +37,12 @@ def FindBlockDuplicates(board):
     duplicates= []
     
     for b in range(0,9):
-        bi, bj = b/3, b%3
+        bi, bj = b//3, b%3
         block = [board[bi*3 + ci][bj*3 + cj] for ci in range(0,3) for cj in range(0,3)]
 
         for n in range(1,10):
             if block.count(n) > 1:
-                duplicates += [(3*bi+k/3,3*bj+k%3) for k,x in enumerate(block) if x == n]
+                duplicates += [(3*bi+k//3,3*bj+k%3) for k,x in enumerate(block) if x == n]
             
     return duplicates
 
@@ -66,8 +66,8 @@ def RemoveZeros(inputList):
 
 def GetCandidateList(board, i, j):
     """ Find possible values in a cell """
-    bi = i/3
-    bj = j/3
+    bi = i//3
+    bj = j//3
     
     block = [[board[bi*3 + ci][bj*3 + cj] for cj in range(0,3)] for ci in range(0,3)]
     row_i = board[i]
@@ -155,14 +155,14 @@ def BlockCells(board, b):
      3 4 5
      6 7 8
      """
-    bi, bj = b/3, b%3
+    bi, bj = b//3, b%3
     return BlockCells_coords(board, bi, bj)
 
 def BlockCoords_coords(bi, bj, k):
-    return 3*bi + k / 3, 3*bj + k % 3
+    return 3*bi + k // 3, 3*bj + k % 3
     
 def BlockCoords(b,k):
-    bi, bj = b/3, b%3
+    bi, bj = b//3, b%3
     return BlockCoords_coords(bi, bj ,k)
 
 def FindHiddenSingle(board, candBoard, ElemFunc, CoordFunc):
@@ -279,7 +279,7 @@ def FindBoxLinePair(board, candBoard, ElemFunc, isRow):
                                 
             # If only found number n twice in col or row, check if in same block
             if count == 2:
-                if idx[0]/3 == idx[1]/3:
+                if idx[0]//3 == idx[1]//3:
                     if isRow:
                         i1, j1, i2, j2 = e, idx[0], e, idx[1] 
                     else:
@@ -287,7 +287,7 @@ def FindBoxLinePair(board, candBoard, ElemFunc, isRow):
                     values += [(n, i1, j1, i2, j2)]
                                         
                     # Mark candidates with value n in same block for removal
-                    bi, bj = i1/3,j1/3
+                    bi, bj = i1//3,j1//3
                     rcells = BlockCells_coords(board, bi, bj)
                     rcands = BlockCells_coords(candBoard, bi, bj)
                     LocFunc = lambda rc: (3*bi + rc / 3, 3*bj + rc % 3)
@@ -367,8 +367,8 @@ def FindBoxTriples(board, candBoard, ElemFunc, CoordFunc):
                     rvalues += RemovalCandidates(rcells, cands, z, lambda k: CoordFunc(e,k), trip_loc)                       
 
                     # Mark candidates with value n in same block for removal
-                    bi, bj = trip_loc[0][0]/3, trip_loc[0][1]/3 
-                    print bi, bj
+                    bi, bj = trip_loc[0][0]//3, trip_loc[0][1]//3 
+                    print(bi, bj)
                     rbcells = BlockCells_coords(board, bi, bj)
                     rbcands = BlockCells_coords(candBoard, bi, bj)
                     rvalues += RemovalCandidates(rbcells, rbcands, x, lambda k: BlockCoords_coords(bi, bj, k), trip_loc)
