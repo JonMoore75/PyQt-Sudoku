@@ -258,7 +258,7 @@ def FindBoxLinePair(board, candBoard, ElemFunc, isRow):
     """ Finds all box-line pairs in columns or rows.
     Box-line pair is when a particular number can only be in two cells, 
     both of which are in the same block.  Means can eliminate that candidate in 
-    that block in other rows/columns. """
+    that same block in other rows/columns. """
     values, rvalues = [], []
     
     # Search through 9 cell element (row, column or block)
@@ -290,7 +290,7 @@ def FindBoxLinePair(board, candBoard, ElemFunc, isRow):
                     bi, bj = i1//3,j1//3
                     rcells = BlockCells_coords(board, bi, bj)
                     rcands = BlockCells_coords(candBoard, bi, bj)
-                    LocFunc = lambda rc: (3*bi + rc / 3, 3*bj + rc % 3)
+                    LocFunc = lambda rc: (3*bi + rc // 3, 3*bj + rc % 3)
                     rvalues += RemovalCandidates(rcells, rcands, n, LocFunc, [(i1, j1), (i2, j2)])
                                         
     return values, rvalues    
@@ -343,20 +343,25 @@ def PointingPairs(board, candBoard):
 def FindBoxTriples(board, candBoard, ElemFunc, CoordFunc):
     values, rvalues = [], []
     
+    # For each row/col
     for e in range(0,9):
-        cells = ElemFunc(board, e) 
-        cands = ElemFunc(candBoard, e) 
+        cells = ElemFunc(board, e)      # Cells in this row or column only
+        cands = ElemFunc(candBoard, e)  # Cands in this row or column only
         
+        # Loop thro each set of 3 cells in each block in this row/col
         for b in range(0,3):
             tripCandSet = set()            
             bs = 3*b
             bf = bs + 3
+            
+            # If no cells filled in for this row/col in this block 
             if cells[bs:bf] == [0,0,0]:
                 for c in range(0,3):
-                    tripCandSet |=  cands[3*b + c]
+                    tripCandSet |=  cands[bs + c]
                     
+                # If only 3 possible candidates in these 3 cells
                 if len(tripCandSet) == 3:
-                    trip_loc = [CoordFunc(e, 3*b + k) for k in range(0,3)]
+                    trip_loc = [CoordFunc(e, bs + k) for k in range(0,3)]
                     x, y, z = tripCandSet
                     values += [tuple(tripCandSet)+tuple(trip_loc)]
                              
@@ -368,7 +373,6 @@ def FindBoxTriples(board, candBoard, ElemFunc, CoordFunc):
 
                     # Mark candidates with value n in same block for removal
                     bi, bj = trip_loc[0][0]//3, trip_loc[0][1]//3 
-                    print(bi, bj)
                     rbcells = BlockCells_coords(board, bi, bj)
                     rbcands = BlockCells_coords(candBoard, bi, bj)
                     rvalues += RemovalCandidates(rbcells, rbcands, x, lambda k: BlockCoords_coords(bi, bj, k), trip_loc)
@@ -384,6 +388,76 @@ def BoxTriples(board, candBoard):
     valuesC, rvaluesC = FindBoxTriples(board, candBoard, ColCells, lambda b,k: (k,b)) 
     
     return valuesR + valuesC, rvaluesR + rvaluesC
+
+def FindXWing(board, candBoard, ElemFunc, CoordFunc):
+    values = []
+    
+    # Loop through all possible numbers
+    for n in range(1,10):
+        
+        pair_loc = []
+
+        # For each row/col
+        for e in range(0,9):
+            cells = ElemFunc(board, e)      # Cells in this row or column only
+            cands = ElemFunc(candBoard, e)  # Cands in this row or column only
+    
+            count = 0
+            idx = []
+            
+            # Loop through each cell of the element
+            for c in range(0,9):                   
+                if cells[c] == 0 and n in cands[c]:
+                    count += 1
+                    idx += [c]
+                    
+            if count == 2:
+                for pair in pair_loc:
+                    ep, idxp = pair
+                    if idxp == idx:
+                        values += [(n, CoordFunc(e, idx[0]), CoordFunc(e, idx[1]), CoordFunc(ep, idxp[0]), CoordFunc(ep, idxp[1]))]
+                pair_loc += [(e, idx)]
+
+    return values
+
+def XWingRemovals(board, candBoard, xwings):
+    rvalues = []
+    for xwing in xwings:
+        n, (i1,j1),(i2,j2),(i3,j3),(i4,j4) = xwing
+        
+        rows = list(set([i1, i2, i3, i4]))
+        cols = list(set([j1, j2, j3, j4]))
+        
+        for row in rows:
+            rowCells = RowCells(board, row)
+            rowCands = RowCells(candBoard, row)
+        
+            for col in range(0,9):
+                if col not in cols and rowCells[col] == 0 and n in rowCands[col]:
+                    rvalues += [(n, row, col)]
+
+        for col in cols:
+            colCells = ColCells(board, col)
+            colCands = ColCells(candBoard, col)
+        
+            for row in range(0,9):
+                if row not in rows and colCells[row] == 0 and n in colCands[row]:
+                    rvalues += [(n, row, col)]
+
+    return rvalues
+                
+def XWings(board, candBoard):
+    # Rows
+    valuesR = FindXWing(board, candBoard, RowCells, lambda b,k: (b,k))
+    # Columns 
+    valuesC = FindXWing(board, candBoard, ColCells, lambda b,k: (k,b))
+    
+    values = valuesR + valuesC
+    
+    rvalues = XWingRemovals(board, candBoard, values)
+    
+    return values, rvalues
+    
       
 def RemovalCandidates(cells, cands, n, LocFunc, exclList):
     """ List the candidates to be marked for removal.  Based on a function 

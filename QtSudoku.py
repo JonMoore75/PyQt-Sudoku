@@ -295,6 +295,10 @@ class SudokuMainWindow(QMainWindow):
         boxtriplePairButton.clicked.connect(lambda: self.HighlightBoxTriples())
         layout.addWidget(boxtriplePairButton)
         
+        xwingButton = QPushButton('X-Wings')
+        xwingButton.clicked.connect(lambda: self.HighlightXWings())
+        layout.addWidget(xwingButton)
+        
         clearHiliteButton = QPushButton('Clear Highlights')
         clearHiliteButton.clicked.connect(lambda: self.ClearHighlights())
         layout.addWidget(clearHiliteButton)
@@ -360,6 +364,7 @@ class SudokuMainWindow(QMainWindow):
  
     def Solve(self):
         """ Solves the board using the backtracking alogorithm """
+        self.ClearHighlights()
         dups = sd.FindDuplicates(self.currBoard)
         if sd.CheckValid(dups):
             prevBoard = deepcopy(self.currBoard)
@@ -380,6 +385,7 @@ class SudokuMainWindow(QMainWindow):
     def FillinSingleCandidatesStep(self):
         """ Look for cells with only 1 candidate and fill them in.
         Updates the candidates after finished """
+        self.ClearHighlights()
         dups = sd.FindDuplicates(self.currBoard)
         if sd.CheckValid(dups):
             prevBoard = deepcopy(self.currBoard)
@@ -398,6 +404,7 @@ class SudokuMainWindow(QMainWindow):
     def FillinSingleCandidates(self):
         """ Look for cells with only 1 candidate and fill them in 
         Then update candidates and iterate until no more changes """
+        self.ClearHighlights()
         dups = sd.FindDuplicates(self.currBoard)
         if sd.CheckValid(dups):
             notdone = True
@@ -477,9 +484,7 @@ class SudokuMainWindow(QMainWindow):
         """ Highlight where there are box triple candidates """
         self.ClearHighlights()
         trips, rCands = sd.BoxTriples(self.currBoard, self.candBoard)
-        
-        print(trips)
-        
+               
         for trip in trips:
             print(trip)
             a,b,c,(i1,j1),(i2,j2),(i3,j3) = trip
@@ -488,10 +493,27 @@ class SudokuMainWindow(QMainWindow):
             self.cells[i3][j3].HiliteCandidates(set([a,b,c]) & self.candBoard[i3][j3])
             
         self.HighlightRemovals(rCands)
+        
+    def HighlightXWings(self):
+        self.ClearHighlights()
+        xwings, rCands = sd.XWings(self.currBoard, self.candBoard)
+        
+        for xwing in xwings:
+            print(xwing)
+            n, (i1,j1),(i2,j2),(i3,j3),(i4,j4) = xwing
+            self.cells[i1][j1].HiliteCandidates(set([n]) & self.candBoard[i1][j1])
+            self.cells[i2][j2].HiliteCandidates(set([n]) & self.candBoard[i2][j2])
+            self.cells[i3][j3].HiliteCandidates(set([n]) & self.candBoard[i3][j3])
+            self.cells[i4][j4].HiliteCandidates(set([n]) & self.candBoard[i4][j4])
+        
+        self.HighlightRemovals(rCands)
+
     
     def RegenerateCandidates(self):
         """ Reset the displayed candidates to those based on those that are 
-        valid (ie avoid duplicates)"""
+        valid (ie avoid duplicates). Resets any candidate changes based on other
+        patterns like hidden singles etc. """
+        self.ClearHighlights()
         self.candBoard = sd.SolveCandidates(self.currBoard)
         
         for i in range(0,9):
@@ -622,6 +644,18 @@ if __name__ == "__main__":
     [0,0,8,2,0,0,0,6,0],
     [0,0,3,0,0,4,0,0,7]
     ]   
+    
+    xwingboard = [
+    [6,0,0,0,9,0,0,0,7],
+    [0,4,0,0,0,7,1,0,0],
+    [0,0,2,8,0,0,0,5,0],
+    [8,0,0,0,0,0,0,9,0],
+    [0,0,0,0,7,0,0,0,0],
+    [0,3,0,0,0,0,0,0,8],
+    [0,5,0,0,0,2,3,0,0],
+    [0,0,4,5,0,0,0,2,0],
+    [9,0,0,0,3,0,0,0,4]
+    ]   
      
     obsboard=[
     [0,7,0,0,0,0,9,1,6],
@@ -634,4 +668,4 @@ if __name__ == "__main__":
     [7,8,0,6,1,2,0,3,9],
     [9,3,0,4,8,7,0,6,1],
     ]
-    sys.exit(run_app(vhardboard))
+    sys.exit(run_app(xwingboard))
