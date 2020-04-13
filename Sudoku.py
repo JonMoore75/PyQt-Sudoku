@@ -107,7 +107,7 @@ def SolveCandidates(board):
     return candBoard
 ###############################################################################
 
-def FindEmpty(board):
+def FindFirstEmptyCell(board):
     """ Find the first cell that is unknown empty """
     for i in range(0,9):
         for j in range(0,9):
@@ -117,24 +117,29 @@ def FindEmpty(board):
 
 def SolvewBacktrack(board):
     """ Solve the puzzle via the backtracking algorithm """
-    foundEmpty = FindEmpty(board)
+    foundEmptyCell = FindFirstEmptyCell(board)
     
-    if not foundEmpty:
-        return True # Solved!
+    numSolns = 0
+    solnBoard = None
     
-    i,j = foundEmpty
+    if not foundEmptyCell:
+        return 1, deepcopy(board) # Solved!
+    
+    i,j = foundEmptyCell
     candSet = GetCandidateList(board, i, j)
     
     for cand in iter(candSet):
-        
+        # Try solution
         board[i][j] = cand
         
-        if SolvewBacktrack(board):
-            return True
-        
+        numSolns_loop, solnBoard_loop = SolvewBacktrack(board)
+        numSolns += numSolns_loop
+        if numSolns ==  1 and solnBoard_loop is not None:
+            solnBoard = solnBoard_loop
+            
         board[i][j] = 0
         
-    return False
+    return numSolns, solnBoard
 
 ###############################################################################
 

@@ -364,21 +364,35 @@ class SudokuMainWindow(QMainWindow):
  
     def Solve(self):
         """ Solves the board using the backtracking alogorithm """
+        finished = sd.FindFirstEmptyCell(self.currBoard) is None
+        
+        if finished:
+            return
+        
         self.ClearHighlights()
         dups = sd.FindDuplicates(self.currBoard)
+        
         if sd.CheckValid(dups):
+            self.FillinSingleCandidates()
             prevBoard = deepcopy(self.currBoard)
             
-            solved = sd.SolvewBacktrack(self.currBoard)
+            print('Start Solver')
+            NumSolns, solnBoard = sd.SolvewBacktrack(self.currBoard)
+            print('End Solver')
             
-            if not solved:
+            if NumSolns == 0:
                 print('No solution')
-            else:
+            elif NumSolns == 1:
+                self.currBoard = solnBoard
                 self.UpdateChangedCells(prevBoard)
                 
                 dups = sd.FindDuplicates(self.currBoard)
                 if not sd.CheckValid(dups):
                     print('Invalid')
+                else:
+                    print('Single Solution')
+            else:
+                print('Multiple Solutions')
                     
         self.ShowInvalidCells(dups)
             
@@ -588,18 +602,40 @@ def UnitTests():
     [0,4,9,2,0,6,0,0,7]
     ]
     
+    ns, sb = sd.SolvewBacktrack(testboard)
+    print('Num Solutions in Test Board, should be 1:', ns)
+    
     testboard[4][4] = 3    
-    print('Check valid via Row Duplicate Test. Should be False', \
+    print('Check valid via Row Duplicate Test. Should be False:', \
         sd.CheckValid(sd.FindDuplicates(testboard)))
     
     testboard[4][4] = 7
-    print('Check valid via Col Duplicate Test. Should be False', \
+    print('Check valid via Col Duplicate Test. Should be False:', \
         sd.CheckValid(sd.FindDuplicates(testboard)))
     
     testboard[4][4] = 5
     testboard[8][8] = 1
-    print('Check valid via Block Duplicate Test. Should be False', \
+    print('Check valid via Block Duplicate Test. Should be False:', \
         sd.CheckValid(sd.FindDuplicates(testboard)))
+
+    ns, sb = sd.SolvewBacktrack(testboard)
+    print('Num Solutions in Invalid Test Board, should be 0:', ns)
+
+    testboard = [
+    [7,8,0,4,0,0,1,2,0],
+    [6,0,0,0,7,5,0,0,9],
+    [0,0,0,6,0,1,0,7,8],
+    [0,0,7,0,4,0,2,6,0],
+    [0,0,1,0,5,0,9,3,0],
+    [9,0,4,0,6,0,0,0,5],
+    [0,7,0,3,0,0,0,1,2],
+    [1,2,0,0,0,0,4,0,0],
+    [0,0,0,0,0,0,0,0,0]
+    ]
+    
+    ns, sb = sd.SolvewBacktrack(testboard)
+    print('Num Solutions in Incomplete Test Board, should be > 1:', ns)
+
     
     print('######### End Unit Tests #############')
 
