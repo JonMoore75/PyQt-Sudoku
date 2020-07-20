@@ -58,6 +58,9 @@ def CheckValid(dup):
     board has a unique solution """
     return len(dup) == 0
 
+def BoardIsValid(board):
+    return CheckValid(FindDuplicates(board))
+
 ###############################################################################
 
 def RemoveZeros(inputList):
@@ -154,7 +157,7 @@ def BlockCells_coords(board, bi, bj):
     return [board[bi*3 + ci][bj*3 + cj] for ci in range(0,3) for cj in range(0,3)]
 
 def BlockCells(board, b):
-    """ Get the cells of a block, where block is labelled by number 0-9 in 
+    """ Get the cells of a block, where block b is labelled by number 0-9 in 
     this pattern
      0 1 2
      3 4 5

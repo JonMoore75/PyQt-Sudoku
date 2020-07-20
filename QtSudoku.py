@@ -324,8 +324,8 @@ class SudokuMainWindow(QMainWindow):
         
         
     def RemoveCandidatesBasedonCellValue(self, i, j, value):
-        """ If have assigned a value to cell i,j remove candidates from block,
-        row and column of this cell """
+        """ If have assigned a value to cell i,j then remove the value as a 
+        candidates from the block, row and column of that cell """
 
         bi, bj = i//3, j//3
         block = [self.cells[bi*3 + ci][bj*3 + cj] for cj in range(0,3) for ci in range(0,3)]
@@ -355,7 +355,8 @@ class SudokuMainWindow(QMainWindow):
             self.cells[dup[0]][dup[1]].SetValidity(isInvalid=True)
                 
     def UpdateChangedCells(self, prevBoard):
-        """ Update the display of changed cells """
+        """ Update the display of changed cells and remove candidates that 
+        are no longer valid due to the new values filled in """
         for i in range(0,9):
             for j in range(0,9):
                 if prevBoard[i][j] != self.currBoard[i][j]:
@@ -575,7 +576,7 @@ class SudokuMainWindow(QMainWindow):
 
 def run_app(origBoard):
     """ Main application function """
-    print('Board is valid:', sd.CheckValid(sd.FindDuplicates(origBoard)))
+    print('Board is valid:', sd.BoardIsValid(origBoard))
     
     candBoard = sd.SolveCandidates(origBoard)
 
@@ -607,16 +608,16 @@ def UnitTests():
     
     testboard[4][4] = 3    
     print('Check valid via Row Duplicate Test. Should be False:', \
-        sd.CheckValid(sd.FindDuplicates(testboard)))
+        sd.BoardIsValid(testboard))
     
     testboard[4][4] = 7
     print('Check valid via Col Duplicate Test. Should be False:', \
-        sd.CheckValid(sd.FindDuplicates(testboard)))
+        sd.BoardIsValid(testboard))
     
     testboard[4][4] = 5
     testboard[8][8] = 1
     print('Check valid via Block Duplicate Test. Should be False:', \
-        sd.CheckValid(sd.FindDuplicates(testboard)))
+        sd.BoardIsValid(testboard))
 
     ns, sb = sd.SolvewBacktrack(testboard)
     print('Num Solutions in Invalid Test Board, should be 0:', ns)
