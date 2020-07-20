@@ -94,17 +94,31 @@ def FillSingleCandidates(board, candBoard):
                 changed = True
                 boardcopy[i][j] = next(iter(candBoard[i][j]))
     
-    return changed, boardcopy, SolveCandidates(boardcopy)
+    return changed, boardcopy, SolveCandidatesIntersect(boardcopy, candBoard)
 
 def SolveCandidates(board):
     """ Takes a Sudoku board (2d 9x9 list of ints with 0 as empty cell) and 
     returns a board that is a 2d 9x9 list of sets.  Each set is the possible 
     int values. Known values are now sets with 1 item. """
-    candBoard = deepcopy(board)
+    candBoard = [[{} for i in range(9)] for j in range(9)]
     for i in range(0,9):
         for j in range(0,9):
             if board[i][j] == 0:
                 candBoard[i][j] = GetCandidateList(board, i, j)
+            else:
+                candBoard[i][j] = set([board[i][j]])
+    return candBoard
+
+def SolveCandidatesIntersect(board, origCandBoard):
+    """ Takes a Sudoku board (2d 9x9 list of ints with 0 as empty cell) and 
+    returns a board that is a 2d 9x9 list of sets.  Each set is the possible 
+    int values. Known values are now sets with 1 item. """
+    candBoard = deepcopy(origCandBoard)
+    for i in range(0,9):
+        for j in range(0,9):
+            if board[i][j] == 0:
+                candSet = GetCandidateList(board, i, j)
+                candBoard[i][j] = candBoard[i][j].intersection(candSet)
             else:
                 candBoard[i][j] = set([board[i][j]])
     return candBoard

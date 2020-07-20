@@ -56,7 +56,7 @@ class Candidate(QLabel):
 #####################
         
 class Cell(QLabel):
-    selected = Signal(object)
+    selected = Signal(object, int)
     def __init__(self, parent, strValue, candSet, i, j):
         super(QLabel, self).__init__(strValue, parent)
         self.cellString = strValue
@@ -160,27 +160,33 @@ class Cell(QLabel):
             candWidget = self.gridLayoutBox.itemAtPosition(i, j).widget()
             candWidget.setText(' ')
                     
-    def ToggleCandidateNumber(self, i,j): 
+    def ToggleCandidateClicked(self): 
         """ Toggles the candidate number if under the mouse """                   
-        candValue = 3*i + j + 1
-        cand = self.gridLayoutBox.itemAtPosition(i, j).widget()
-        if cand.underMouse():
-            print(candValue, cand.text())
-            candStr = str(candValue) if cand.text() == ' ' else ' '
-            cand.setText(candStr)
+        for i in range(0,3):
+            for j in range(0,3):
+                candValue = 3*i + j + 1
+                cand = self.gridLayoutBox.itemAtPosition(i, j).widget()
+                if cand.underMouse():
+                    candStr = str(candValue) if cand.text() == ' ' else ' '
+                    cand.setText(candStr)
+                    
+                    return candValue
+        
+        return 0
         
     def mouseReleaseEvent(self, QMouseEvent):
         """ Handle cell being clicked on """
-        self.selected.emit(self)
+        
+        cand = 0
         
         if self.property('selected') and self.cellString == ' ':
-            for i in range(0,3):
-                for j in range(0,3):
-                    self.ToggleCandidateNumber(i,j)
+            cand = self.ToggleCandidateClicked()
         else: # Hightlight the cell in blue
             self.setProperty('selected', True)
             self.style().unpolish(self)
             self.style().polish(self)
+            
+        self.selected.emit(self, cand)
     
     def Deselect(self):
         """ If cell selected, deselect it """
@@ -281,6 +287,10 @@ class SudokuMainWindow(QMainWindow):
         genCandButton = QPushButton('Re-generate Candidates')
         genCandButton.clicked.connect(lambda: self.RegenerateCandidates())
         layout.addWidget(genCandButton)
+
+        updCandButton = QPushButton('Update Candidates')
+        updCandButton.clicked.connect(lambda: self.UpdatePossibleCandidates())
+        layout.addWidget(updCandButton)
         
         hiddenSingleButton = QPushButton('Highlight Hidden Singles')
         hiddenSingleButton.clicked.connect(lambda: self.HighlightHiddenSingles())
@@ -314,16 +324,26 @@ class SudokuMainWindow(QMainWindow):
         
         
                 
-    def CellClicked(self, cell):
+    def CellClicked(self, cell, cand):
         """ Handler function for a cell being clicked.  Makes sure only 1 cell
         is selected at a time ie only 1 cell has focus for input. """
         if self.selectedCell and self.selectedCell is not cell:
             self.selectedCell.Deselect()
    
         self.selectedCell = cell
-       
+        
+        valStr = ', with value '+self.selectedCell.cellString if self.selectedCell else ''
+        candStr = ', changed candidate '+str(cand) if cand > 0 else ''
+        
+        if cand > 0:
+            i,j = self.selectedCell.i, self.selectedCell.j
+            if cand in self.candBoard[i][j]:
+                self.candBoard[i][j].remove(cand)
+            else:
+                self.candBoard[i][j].add(cand)
+        
         print ('Clicked on cell ('+str(self.selectedCell.i)+','\
-         +str(self.selectedCell.j)+'), with value '+self.selectedCell.cellString)
+         +str(self.selectedCell.j)+')'+valStr+candStr)
           
                 
     def FillinCell(self, i, j, value):
@@ -553,7 +573,19 @@ class SudokuMainWindow(QMainWindow):
         for i in range(0,9):
             for j in range(0,9):
                 candSet = self.candBoard[i][j]     
-                self.cells[i][j].UpdateCandidates(candSet)       
+                self.cells[i][j].UpdateCandidates(candSet)  
+                
+    def UpdatePossibleCandidates(self):
+        """ Removes any candidates that are no longer valid. 
+        Does NOT reset candidate changes made previously """
+        self.ClearHighlights()
+        cands = sd.SolveCandidatesIntersect(self.currBoard, self.candBoard)        
+        
+        for i in range(0,9):
+            for j in range(0,9):
+                candSet = self.candBoard[i][j]     
+                self.cells[i][j].UpdateCandidates(candSet)  
+        
                 
     def mouseReleaseEvent(self, QMouseEvent):
         """ If mouse clicked not on child widget such as a cell """
