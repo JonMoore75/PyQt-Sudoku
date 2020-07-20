@@ -4,7 +4,7 @@ from PyQt5 import QtCore, QtWidgets
 from PyQt5.QtCore import pyqtSignal, pyqtSlot
 Signal, Slot = pyqtSignal, pyqtSlot 
 from PyQt5.QtWidgets import QMainWindow, QLabel, QGridLayout, QWidget, \
-    QPushButton, QHBoxLayout, QVBoxLayout    
+    QPushButton, QHBoxLayout, QVBoxLayout
 
 from PyQt5.QtGui import QFont
 
@@ -13,6 +13,7 @@ from os import environ
 import Sudoku as sd
 
 ###############################################################################
+# Allow HighDPI Scaling
 
 if hasattr(QtCore.Qt, 'AA_EnableHighDpiScaling'):
     QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_EnableHighDpiScaling, True)
@@ -21,11 +22,9 @@ if hasattr(QtCore.Qt, 'AA_UseHighDpiPixmaps'):
     QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_UseHighDpiPixmaps, True)
     
 environ["QT_AUTO_SCREEN_SCALE_FACTOR"] = "1"
-
-
     
 ###############################################################################
-# View - this is the pyQT5 GUI dealing with input and display
+
 
 def Value2String(value):
     return str(value) if value is not 0 else ' '
@@ -231,11 +230,15 @@ class SudokuMainWindow(QMainWindow):
         centralWidget.setLayout(outerLayout)
         
         gridLayout = QGridLayout()
+        # Span multiple columns / rows in order row, column, rowSpan, columnSpan
+        # We will have 12 columns with first 9 being the sudoku board and last 
+        # 3 the UI.  
         outerLayout.addLayout(gridLayout,0,0,9,9)
         self.CreateBoard(board, candBoard, self, gridLayout)
         
         vLayout = QVBoxLayout()
-        outerLayout.addLayout(vLayout,2,9,3,3)
+        # The UI will start at row 2 and be 4 rows rows deep
+        outerLayout.addLayout(vLayout,2,9,4,3)
         self.CreateButtons(self, vLayout)
         
         
@@ -259,6 +262,10 @@ class SudokuMainWindow(QMainWindow):
                 
     def CreateButtons(self, parent, layout):
         """ Create the buttons toolbar for solving options """
+        self.msgText = QLabel('Num Solutions: ?')
+        self.msgText.setStyleSheet("border: 1px solid black;")
+        layout.addWidget(self.msgText)
+        
         solveButton = QPushButton('Solve')
         solveButton.clicked.connect(lambda: self.Solve())
         layout.addWidget(solveButton)
@@ -302,6 +309,8 @@ class SudokuMainWindow(QMainWindow):
         clearHiliteButton = QPushButton('Clear Highlights')
         clearHiliteButton.clicked.connect(lambda: self.ClearHighlights())
         layout.addWidget(clearHiliteButton)
+        
+
         
         
                 
@@ -364,14 +373,14 @@ class SudokuMainWindow(QMainWindow):
                     self.RemoveCandidatesBasedonCellValue(i, j, self.currBoard[i][j])
  
     def Solve(self):
-        """ Solves the board using the backtracking alogorithm """
-        finished = sd.FindFirstEmptyCell(self.currBoard) is None
-        
-        if finished:
+        """ Solves the board using the backtracking alogorithm """       
+        if sd.BoardSolved(self.currBoard):
             return
         
         self.ClearHighlights()
         dups = sd.FindDuplicates(self.currBoard)
+        
+        NumSolns = 0
         
         if sd.CheckValid(dups):
             self.FillinSingleCandidates()
@@ -383,6 +392,7 @@ class SudokuMainWindow(QMainWindow):
             
             if NumSolns == 0:
                 print('No solution')
+                self.msgText.setText('Num Solutions: 0')
             elif NumSolns == 1:
                 self.currBoard = solnBoard
                 self.UpdateChangedCells(prevBoard)
@@ -390,10 +400,19 @@ class SudokuMainWindow(QMainWindow):
                 dups = sd.FindDuplicates(self.currBoard)
                 if not sd.CheckValid(dups):
                     print('Invalid')
+                    NumSolns = 0
                 else:
                     print('Single Solution')
             else:
                 print('Multiple Solutions')
+                
+        if NumSolns == 1:
+            self.msgText.setStyleSheet("border: 1px solid black; color: black;")
+        else: 
+            self.msgText.setStyleSheet("border: 1px solid black; color: red;")               
+                
+        self.msgText.setText('Num Solutions: '+str(NumSolns))
+
                     
         self.ShowInvalidCells(dups)
             

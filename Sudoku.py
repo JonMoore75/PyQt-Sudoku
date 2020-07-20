@@ -118,6 +118,9 @@ def FindFirstEmptyCell(board):
                 return (i,j)
     return None
 
+def BoardSolved(board):
+    return FindFirstEmptyCell(board) is None 
+
 def SolvewBacktrack(board):
     """ Solve the puzzle via the backtracking algorithm """
     foundEmptyCell = FindFirstEmptyCell(board)
