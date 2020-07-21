@@ -124,8 +124,11 @@ def SolveCandidatesIntersect(board, origCandBoard):
                 candBoard[i][j] = set([board[i][j]])
     return candBoard
 
-def UpdateCandidates(value, i, j, candBoard):
-    candBoard[i][j] = set(value)
+def UpdateCandidates(value, i, j, origCandBoard):
+    """ If a value has been filled in at cell i,j then remove that as a candidate
+    from the same col, row and block. """
+    candBoard = deepcopy(origCandBoard)
+    candBoard[i][j] = {value}
     
     bi = i//3
     bj = j//3
@@ -140,7 +143,9 @@ def UpdateCandidates(value, i, j, candBoard):
     # For each of these cells remove the value as a candidate
     for cds in idx:
         ci, cj = cds
-        candBoard[ci][cj].remove(value)
+        candBoard[ci][cj].discard(value)
+        
+    return candBoard
     
 ###############################################################################
 
@@ -155,35 +160,49 @@ def FindFirstEmptyCell(board):
 def BoardSolved(board):
     return FindFirstEmptyCell(board) is None 
 
-def SolvewBacktrack(board):
+def SolvewBacktrack(board, initial=True):
     """ Solve the puzzle via the backtracking algorithm """
     numSolns = 0
     solnBoard = None
+    
+    if initial:
+        candBoard = SolveCandidates(board)
+        changed = True
+        while changed:
+            changed = False
+            changed, board, candBoard = FillSingleCandidates(board, candBoard)
+            values = HiddenSingles(board, candBoard)
+            
+            # Fill in hidden singles
+            if len(values) > 0:
+                changed = True
+                
+                for value in values:
+                    i,j,n = value
+                    board[i][j] = n
+                    candBoard = UpdateCandidates(n, i, j, candBoard)
+            
 
     foundEmptyCell = FindFirstEmptyCell(board)
-    
-    if not foundEmptyCell:
-        return 1, deepcopy(board) # Solved!
-    
-    i,j = foundEmptyCell
-    candSet = GetCandidateList(board, i, j)
-    
-    if len(candSet) == 1:
-        print('Only 1 cand at ',i,j)
-#        board[i][j] = next(iter(S))
-    
-    for cand in iter(candSet):
-        # Try solution
-        board[i][j] = cand
-        
-        numSolns_loop, solnBoard_loop = SolvewBacktrack(board)
-        numSolns += numSolns_loop
-        if numSolns ==  1 and solnBoard_loop is not None:
-            solnBoard = solnBoard_loop
+    if foundEmptyCell:       
+        i,j = foundEmptyCell
+        candSet = GetCandidateList(board, i, j)
             
-        board[i][j] = 0
-        
-    return numSolns, solnBoard
+        for cand in iter(candSet):
+            # Try solution
+            board[i][j] = cand
+            
+            numSolns_loop, solnBoard_loop = SolvewBacktrack(board, False)
+            numSolns += numSolns_loop
+            if numSolns ==  1 and solnBoard_loop is not None:
+                solnBoard = solnBoard_loop
+                
+            board[i][j] = 0
+            
+        return numSolns, solnBoard
+    else:
+        return 1, deepcopy(board) # Solved!
+
 
 ###############################################################################
 
