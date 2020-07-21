@@ -112,7 +112,8 @@ def SolveCandidates(board):
 def SolveCandidatesIntersect(board, origCandBoard):
     """ Takes a Sudoku board (2d 9x9 list of ints with 0 as empty cell) and 
     returns a board that is a 2d 9x9 list of sets.  Each set is the possible 
-    int values. Known values are now sets with 1 item. """
+    int values. Known values are now sets with 1 item. This version compares to
+    the previous candidates and returns only candidates in both sets"""
     candBoard = deepcopy(origCandBoard)
     for i in range(0,9):
         for j in range(0,9):
@@ -122,6 +123,25 @@ def SolveCandidatesIntersect(board, origCandBoard):
             else:
                 candBoard[i][j] = set([board[i][j]])
     return candBoard
+
+def UpdateCandidates(value, i, j, candBoard):
+    candBoard[i][j] = set(value)
+    
+    bi = i//3
+    bj = j//3
+    
+    # Find indices of all cells in same col, row and block
+    idx = {(i,rj) for rj in range(9)}
+    idx = idx.union({(ri,j) for ri in range(9)})
+    idx = idx.union({(bi*3 + bk // 3, bj*3 + bk%3) for bk in range(0,9)})
+    
+    idx.remove((i,j))
+    
+    # For each of these cells remove the value as a candidate
+    for cds in idx:
+        ci, cj = cds
+        candBoard[ci][cj].remove(value)
+    
 ###############################################################################
 
 def FindFirstEmptyCell(board):
@@ -137,16 +157,20 @@ def BoardSolved(board):
 
 def SolvewBacktrack(board):
     """ Solve the puzzle via the backtracking algorithm """
-    foundEmptyCell = FindFirstEmptyCell(board)
-    
     numSolns = 0
     solnBoard = None
+
+    foundEmptyCell = FindFirstEmptyCell(board)
     
     if not foundEmptyCell:
         return 1, deepcopy(board) # Solved!
     
     i,j = foundEmptyCell
     candSet = GetCandidateList(board, i, j)
+    
+    if len(candSet) == 1:
+        print('Only 1 cand at ',i,j)
+#        board[i][j] = next(iter(S))
     
     for cand in iter(candSet):
         # Try solution
