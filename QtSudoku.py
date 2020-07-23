@@ -280,13 +280,10 @@ class SudokuMainWindow(QMainWindow):
 #        singleCandButton.clicked.connect(lambda: self.FillinSingleCandidates())
 #        layout.addWidget(singleCandButton)
 
-        singleCandStepButton = QPushButton('Fill Single Candidates - Step')
+        singleCandStepButton = QPushButton('Fill Single Candidates')
         singleCandStepButton.clicked.connect(lambda: self.FillinSingleCandidatesStep())
         layout.addWidget(singleCandStepButton)
         
-        genCandButton = QPushButton('Re-generate Candidates')
-        genCandButton.clicked.connect(lambda: self.RegenerateCandidates())
-        layout.addWidget(genCandButton)
 
         updCandButton = QPushButton('Update Candidates')
         updCandButton.clicked.connect(lambda: self.UpdatePossibleCandidates())
@@ -315,6 +312,10 @@ class SudokuMainWindow(QMainWindow):
         xwingButton = QPushButton('X-Wings')
         xwingButton.clicked.connect(lambda: self.HighlightXWings())
         layout.addWidget(xwingButton)
+        
+        genCandButton = QPushButton('Re-generate Candidates')
+        genCandButton.clicked.connect(lambda: self.RegenerateCandidates())
+        layout.addWidget(genCandButton)
         
         clearHiliteButton = QPushButton('Clear Highlights')
         clearHiliteButton.clicked.connect(lambda: self.ClearHighlights())
@@ -579,7 +580,7 @@ class SudokuMainWindow(QMainWindow):
         """ Removes any candidates that are no longer valid. 
         Does NOT reset candidate changes made previously """
         self.ClearHighlights()
-        cands = sd.SolveCandidatesIntersect(self.currBoard, self.candBoard)        
+        self.candBoard = sd.SolveCandidatesIntersect(self.currBoard, self.candBoard)        
         
         for i in range(0,9):
             for j in range(0,9):
@@ -607,12 +608,12 @@ class SudokuMainWindow(QMainWindow):
             if QtCore.Qt.Key_1 <= key <= QtCore.Qt.Key_9:                    
                 self.selectedCell.UpdateValue(keyStr)
                 self.currBoard[self.selectedCell.i][self.selectedCell.j] = int(keyStr)
-                self.candBoard = sd.SolveCandidates(self.currBoard)
+#                self.UpdatePossibleCandidates()
                     
             if key == QtCore.Qt.Key_Backspace:
                 self.selectedCell.UpdateValue(' ')
                 self.currBoard[self.selectedCell.i][self.selectedCell.j] = 0
-                self.candBoard = sd.SolveCandidates(self.currBoard)
+#                self.candBoard = sd.SolveCandidates(self.currBoard)
             
             dups = sd.FindDuplicates(self.currBoard)
             if not sd.CheckValid(dups):
