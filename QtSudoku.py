@@ -272,6 +272,10 @@ class SudokuMainWindow(QMainWindow):
         self.msgText.setStyleSheet("border: 1px solid black;")
         layout.addWidget(self.msgText)
         
+        solveButton = QPushButton('Restart')
+        solveButton.clicked.connect(lambda: self.ResetBoard())
+        layout.addWidget(solveButton)
+        
         solveButton = QPushButton('Solve')
         solveButton.clicked.connect(lambda: self.Solve())
         layout.addWidget(solveButton)
@@ -322,7 +326,17 @@ class SudokuMainWindow(QMainWindow):
         layout.addWidget(clearHiliteButton)
         
 
+    def ResetBoard(self):
+        self.currBoard = self.origBoard
+        self.msgText.setText('Num Solutions: ?')  
         
+        for i in range(0,9):
+            for j in range(0,9):
+                if self.currBoard != 0:
+                    strValue = Value2String(self.currBoard[i][j])
+                    self.cells[i][j].UpdateValue(strValue)
+                    
+        self.RegenerateCandidates()
         
                 
     def CellClicked(self, cell, cand):
