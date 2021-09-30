@@ -1,6 +1,7 @@
 import sys
 from copy import deepcopy
-from PyQt5 import QtCore, QtWidgets
+
+from PyQt5 import QtCore, QtWidgets, QtGui
 from PyQt5.QtCore import pyqtSignal, pyqtSlot
 Signal, Slot = pyqtSignal, pyqtSlot 
 from PyQt5.QtWidgets import QMainWindow, QLabel, QGridLayout, QWidget, \
@@ -27,7 +28,7 @@ environ["QT_AUTO_SCREEN_SCALE_FACTOR"] = "1"
 
 
 def Value2String(value):
-    return str(value) if value is not 0 else ' '
+    return str(value) if value != 0 else ' '
         
 #####################     
     
