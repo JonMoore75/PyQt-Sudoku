@@ -16,56 +16,43 @@ def GetColCells(board, j):
     return [row[j] for row in board]
 
 
-def GetBlockCoordsFromCellCoords(i, j):
-    """ Find the block coords from for a 3x3 block labelled b. """
-    return i // 3, j // 3
+def GetBlockIDFromCellCoords(i, j):
+    return 3*(i // 3) + (j // 3)
 
 
-def GetBlockCoordsFromBlockLabel(b):
+def GetBlockCoordsFromBlockID(b):
     """ Find the block coords from for a 3x3 block labelled b. """
     return b // 3, b % 3
 
 
-def GetCellCoordsFromBlockCoords(bi, bj, k):
+def GetCellCoordsFromBlockID(b, k):
     """ Find the board coords from for a particular cell in a 3x3 block.
-        bi, bj - int coords of the 3x3 block e.g. (0,0) is top left and (2,2) bottom right block
-        k - is the int cell label of the required cell in the 3x3 block
-
-    Cell labels are integers 0-9 labelling each cell in the 3x3 block in this pattern
+        b - is the ID of the 3x3 block
+        k - is the int cell id of the required cell in the 3x3 block
+    Cell and block IDs are integers 0-8 labelling each cell in the 3x3 block or 3x3 block in the board in this pattern
      0 1 2
      3 4 5
      6 7 8
-
-    We use these 3 coords to find the i,j int coords of the cell in the whole board
     """
+    bi, bj = GetBlockCoordsFromBlockID(b)
     return 3*bi + k // 3, 3*bj + k % 3
 
 
-def GetCellCoordsFromBlockLabel(b, k):
-    """ Find the board coords from for a particular cell in a 3x3 block. """
-    bi, bj = GetBlockCoordsFromBlockLabel(b)
-    return GetCellCoordsFromBlockCoords(bi, bj, k)
-
-
-def GetBlockCells_coords(board, bi, bj):
-    """ Get the cells of a 3x3 block based on block coords bi and bj, and return the cells as a list"""
-    return [board[bi * 3 + ci][bj * 3 + cj] for ci in range(0, 3) for cj in range(0, 3)]
-
-
-def GetBlockCells_BlockLabel(board, b):
-    """ Get the cells of a 3x3 block, where block b is labelled by number 0-9 in
+def GetBlockCells_BlockID(board, b):
+    """ Get the cells of a 3x3 block, where block b is labelled by number 0-8 in
     this pattern
      0 1 2
      3 4 5
      6 7 8
      """
-    bi, bj = GetBlockCoordsFromBlockLabel(b)
-    return GetBlockCells_coords(board, bi, bj)
+    # Get the cells of a 3x3 block based on block coords bi and bj, and return the cells as a list
+    bi, bj = GetBlockCoordsFromBlockID(b)
+    return [board[bi * 3 + ci][bj * 3 + cj] for ci in range(0, 3) for cj in range(0, 3)]
 
 
-def GetBlockCells(board, i, j):
-    bi, bj = GetBlockCoordsFromCellCoords(i, j)
-    return GetBlockCells_coords(board, bi, bj)
+def GetBlockCells_CellID(board, i, j):
+    b = GetBlockIDFromCellCoords(i, j)
+    return GetBlockCells_BlockID(board, b)
 
 
 ###############################################################################
@@ -109,11 +96,11 @@ def FindBlockDuplicates(board):
     duplicates = []
 
     for b in range(0, 9):  # Loop thro each of the 9 3x3 blocks in the board
-        block = GetBlockCells_BlockLabel(board, b)
+        block = GetBlockCells_BlockID(board, b)
 
         for n in range(1, 10):  # For each possible number n that could go in a cell
             if block.count(n) > 1:
-                duplicates += [GetCellCoordsFromBlockLabel(b, k) for k, cell_value in enumerate(block) if cell_value == n]
+                duplicates += [GetCellCoordsFromBlockID(b, k) for k, cell_value in enumerate(block) if cell_value == n]
 
     return duplicates
 
@@ -143,7 +130,7 @@ def RemoveZeros(input_list):
 def GetCellCandidateList(board, i, j):
     """ Find possible values in a cell """
 
-    blockValues = set(RemoveZeros(GetBlockCells(board, i, j)))
+    blockValues = set(RemoveZeros(GetBlockCells_CellID(board, i, j)))
     rowValues = set(RemoveZeros(GetRowCells(board, i)))
     colValues = set(RemoveZeros(GetColCells(board, j)))
 
@@ -201,12 +188,12 @@ def UpdateCandidates(value, i, j, origCandBoard):
     candBoard = deepcopy(origCandBoard)
     candBoard[i][j] = {value}
 
-    bi, bj = GetBlockCoordsFromCellCoords(i,j)
+    b = GetBlockIDFromCellCoords(i, j)
 
     # Find indices of all cells in same col, row and block
     idx = {(i, rj) for rj in range(9)}                                                  # Row
     idx = idx.union({(ri, j) for ri in range(9)})                                       # Column
-    idx = idx.union({GetCellCoordsFromBlockCoords(bi, bj, bk) for bk in range(0, 9)})   # Block
+    idx = idx.union({GetCellCoordsFromBlockID(b, k) for k in range(0, 9)})   # Block
 
     idx.remove((i, j))
 
@@ -284,9 +271,9 @@ def FindHiddenSingle(board, candBoard, UnitFunc, CoordFunc):
     values = []
 
     # Search through 9 cell unit (row, column or block)
-    for e in range(0, 9):
-        cells = UnitFunc(board, e)
-        candsInUnit = UnitFunc(candBoard, e)
+    for u in range(0, 9):
+        cells = UnitFunc(board, u)
+        candsInUnit = UnitFunc(candBoard, u)
 
         # Loop through all possible numbers
         for n in range(1, 10):
@@ -298,7 +285,7 @@ def FindHiddenSingle(board, candBoard, UnitFunc, CoordFunc):
                     idx = c
 
             if count == 1:
-                i, j = CoordFunc(e, idx)
+                i, j = CoordFunc(u, idx)
                 values += [(i, j, n)]
 
     return values
@@ -313,7 +300,7 @@ def HiddenSingles(board, candBoard):
     # Columns
     values += FindHiddenSingle(board, candBoard, GetColCells, lambda b, k: (k, b))
     # Block
-    values += FindHiddenSingle(board, candBoard, GetBlockCells_BlockLabel, GetCellCoordsFromBlockLabel)
+    values += FindHiddenSingle(board, candBoard, GetBlockCells_BlockID, GetCellCoordsFromBlockID)
 
     return values
 
@@ -366,7 +353,7 @@ def NakedPairs(board, candBoard):
     valuesC, rvaluesC = FindNakedPair(board, candBoard, GetColCells, lambda b, k: (k, b))
 
     # Blocks
-    valuesB, rvaluesB = FindNakedPair(board, candBoard, GetBlockCells_BlockLabel, GetCellCoordsFromBlockLabel)
+    valuesB, rvaluesB = FindNakedPair(board, candBoard, GetBlockCells_BlockID, GetCellCoordsFromBlockID)
 
     return valuesR + valuesC + valuesB, rvaluesR + rvaluesC + rvaluesB
 
@@ -378,10 +365,10 @@ def FindBoxLinePair(board, candBoard, UnitFunc, isRow):
     that same block in other rows/columns. """
     values, removal_values = [], []
 
-    # Search through 9 cell unit (row, column or block)
-    for e in range(0, 9):
-        cells = UnitFunc(board, e)
-        candsInUnit = UnitFunc(candBoard, e)
+    # Search through 9 cell unit (row or column)
+    for u in range(0, 9):
+        cells = UnitFunc(board, u)
+        candsInUnit = UnitFunc(candBoard, u)
 
         # Loop through all possible numbers
         for n in range(1, 10):
@@ -398,18 +385,18 @@ def FindBoxLinePair(board, candBoard, UnitFunc, isRow):
             if count == 2:
                 if idx[0] // 3 == idx[1] // 3:
                     if isRow:
-                        i1, j1, i2, j2 = e, idx[0], e, idx[1]
+                        i1, j1, i2, j2 = u, idx[0], u, idx[1]
                     else:
-                        i1, j1, i2, j2 = idx[0], e, idx[1], e
+                        i1, j1, i2, j2 = idx[0], u, idx[1], u
                     values += [(n, i1, j1, i2, j2)]
 
                     # Mark candidates with value n in same block for removal
-                    bi, bj = GetBlockCoordsFromCellCoords(i1, j1)
-                    rcells = GetBlockCells_coords(board, bi, bj)
-                    rcands = GetBlockCells_coords(candBoard, bi, bj)
+                    b = GetBlockIDFromCellCoords(i1, j1)
+                    rcells = GetBlockCells_BlockID(board, b)
+                    rcands = GetBlockCells_BlockID(candBoard, b)
 
                     def LocFunc(k):
-                        return GetCellCoordsFromBlockCoords(bi, bj, k)
+                        return GetCellCoordsFromBlockID(b, k)
                     removal_values += RemovalCandidates(rcells, rcands, n, LocFunc, [(i1, j1), (i2, j2)])
 
     return values, removal_values
@@ -431,8 +418,8 @@ def PointingPairs(board, candBoard):
 
     # Loop through each block
     for b in range(0, 9):
-        cellsInBlock = GetBlockCells_BlockLabel(board, b)
-        candsInBlock = GetBlockCells_BlockLabel(candBoard, b)
+        cellsInBlock = GetBlockCells_BlockID(board, b)
+        candsInBlock = GetBlockCells_BlockID(candBoard, b)
 
         # Loop through all possible numbers
         for n in range(1, 10):
@@ -447,8 +434,8 @@ def PointingPairs(board, candBoard):
 
             # If only found number n twice in col or row, check if in same row/col
             if count == 2:
-                i1, j1 = GetCellCoordsFromBlockLabel(b, idx[0])
-                i2, j2 = GetCellCoordsFromBlockLabel(b, idx[1])
+                i1, j1 = GetCellCoordsFromBlockID(b, idx[0])
+                i2, j2 = GetCellCoordsFromBlockID(b, idx[1])
 
                 if i1 == i2 or j1 == j2:
                     values += [(n, i1, j1, i2, j2)]
@@ -499,12 +486,12 @@ def FindBoxTriples(board, candBoard, UnitFunc, CoordFunc):
                     removal_values += RemovalCandidates(rcells, cands, z, lambda k: CoordFunc(u, k), trip_loc)
 
                     # Mark candidates with value n in same block for removal
-                    bi, bj = GetBlockCoordsFromCellCoords(trip_loc[0][0], trip_loc[0][1])
-                    rbcells = GetBlockCells_coords(board, bi, bj)
-                    rbcands = GetBlockCells_coords(candBoard, bi, bj)
-                    removal_values += RemovalCandidates(rbcells, rbcands, x, lambda k: GetCellCoordsFromBlockCoords(bi, bj, k), trip_loc)
-                    removal_values += RemovalCandidates(rbcells, rbcands, y, lambda k: GetCellCoordsFromBlockCoords(bi, bj, k), trip_loc)
-                    removal_values += RemovalCandidates(rbcells, rbcands, z, lambda k: GetCellCoordsFromBlockCoords(bi, bj, k), trip_loc)
+                    b = GetBlockIDFromCellCoords(trip_loc[0][0], trip_loc[0][1])
+                    rbcells = GetBlockCells_BlockID(board, b)
+                    rbcands = GetBlockCells_BlockID(candBoard, b)
+                    removal_values += RemovalCandidates(rbcells, rbcands, x, lambda k: GetCellCoordsFromBlockID(b, k), trip_loc)
+                    removal_values += RemovalCandidates(rbcells, rbcands, y, lambda k: GetCellCoordsFromBlockID(b, k), trip_loc)
+                    removal_values += RemovalCandidates(rbcells, rbcands, z, lambda k: GetCellCoordsFromBlockID(b, k), trip_loc)
 
     return values, removal_values
 

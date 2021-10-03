@@ -674,17 +674,14 @@ def UnitTests():
     print('Num Solutions in Test Board, should be 1:', ns)
     
     testboard[4][4] = 3    
-    print('Check valid via Row Duplicate Test. Should be False:', \
-        sd.BoardIsValid(testboard))
+    print('Check valid via Row Duplicate Test. Should be False:', sd.BoardIsValid(testboard))
     
     testboard[4][4] = 7
-    print('Check valid via Col Duplicate Test. Should be False:', \
-        sd.BoardIsValid(testboard))
+    print('Check valid via Col Duplicate Test. Should be False:', sd.BoardIsValid(testboard))
     
     testboard[4][4] = 5
     testboard[8][8] = 1
-    print('Check valid via Block Duplicate Test. Should be False:', \
-        sd.BoardIsValid(testboard))
+    print('Check valid via Block Duplicate Test. Should be False:', sd.BoardIsValid(testboard))
 
     ns, sb = sd.SolvewBacktrack(testboard)
     print('Num Solutions in Invalid Test Board, should be 0:', ns)
