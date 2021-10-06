@@ -137,7 +137,7 @@ def GetCellCandidateList(board, i, j):
     return set(range(1, 10)) - block_values - row_values - col_values
 
 
-def FillSingleCandidates(board, candBoard):
+def FillSingleCandidates(board, cand_board):
     """ Fills in any empty cells with single candidate
     Copies inputs so not changed by this function."""
     board_copy = deepcopy(board)
@@ -145,50 +145,50 @@ def FillSingleCandidates(board, candBoard):
 
     for i in range(0, 9):
         for j in range(0, 9):
-            if len(candBoard[i][j]) == 1 and board[i][j] == 0:
+            if len(cand_board[i][j]) == 1 and board[i][j] == 0:
                 changed = True
-                board_copy[i][j] = next(iter(candBoard[i][j]))
+                board_copy[i][j] = next(iter(cand_board[i][j]))
 
-    return changed, board_copy, SolveCandidatesIntersect(board_copy, candBoard)
+    return changed, board_copy, SolveCandidatesIntersect(board_copy, cand_board)
 
 
 def SolveCandidates(board):
     """ Takes a Sudoku board (2d 9x9 list of ints with 0 as empty cell) and
     returns a board that is a 2d 9x9 list of sets.  Each set is the possible
     int values. Known values are now sets with 1 item. """
-    candBoard = [[{} for i in range(9)] for j in range(9)]
+    cand_board = [[{} for i in range(9)] for j in range(9)]
     for i in range(0, 9):
         for j in range(0, 9):
             if board[i][j] == 0:
-                candBoard[i][j] = GetCellCandidateList(board, i, j)
+                cand_board[i][j] = GetCellCandidateList(board, i, j)
             else:
-                candBoard[i][j] = set([board[i][j]])
-    return candBoard
+                cand_board[i][j] = set([board[i][j]])
+    return cand_board
 
 
-def SolveCandidatesIntersect(board, origCandBoard):
+def SolveCandidatesIntersect(board, orig_cand_board):
     """ Takes a Sudoku board (2d 9x9 list of ints with 0 as empty cell) and
     returns a board that is a 2d 9x9 list of sets.  Each set is the possible
     int values. Known values are now sets with 1 item.
     This version compares to the previous candidates and returns only
     candidates in both sets.
     This prevents candidates previously removed from being added back."""
-    candBoard = deepcopy(origCandBoard)
+    cand_board = deepcopy(orig_cand_board)
     for i in range(0, 9):
         for j in range(0, 9):
             if board[i][j] == 0:
                 candSet = GetCellCandidateList(board, i, j)
-                candBoard[i][j] = candBoard[i][j].intersection(candSet)
+                cand_board[i][j] = cand_board[i][j].intersection(candSet)
             else:
-                candBoard[i][j] = set([board[i][j]])
-    return candBoard
+                cand_board[i][j] = set([board[i][j]])
+    return cand_board
 
 
-def UpdateCandidates(value, i, j, origCandBoard):
+def UpdateCandidates(value, i, j, orig_cand_board):
     """ If a value has been filled in at cell i,j then remove that as a candidate
     from the same col, row and block. """
-    candBoard = deepcopy(origCandBoard)
-    candBoard[i][j] = {value}
+    cand_board = deepcopy(orig_cand_board)
+    cand_board[i][j] = {value}
 
     b = GetBlockIDFromCellCoords(i, j)
 
@@ -201,9 +201,9 @@ def UpdateCandidates(value, i, j, origCandBoard):
     # For each of these cells remove the value as a candidate
     for cds in idx:
         ci, cj = cds
-        candBoard[ci][cj].discard(value)
+        cand_board[ci][cj].discard(value)
 
-    return candBoard
+    return cand_board
 
 
 ###############################################################################
@@ -228,12 +228,12 @@ def SolvewBacktrack(board, initial=True):
 
     # First simplify the board by filling in naked and hidden singles
     if initial:
-        candBoard = SolveCandidates(board)
+        cand_board = SolveCandidates(board)
         changed = True
         while changed:
             changed = False
-            changed, board, candBoard = FillSingleCandidates(board, candBoard)
-            values = HiddenSingles(board, candBoard)
+            changed, board, cand_board = FillSingleCandidates(board, cand_board)
+            values = HiddenSingles(board, cand_board)
 
             # Fill in hidden singles
             if len(values) > 0:
@@ -242,7 +242,7 @@ def SolvewBacktrack(board, initial=True):
                 for value in values:
                     i, j, n = value
                     board[i][j] = n
-                    candBoard = UpdateCandidates(n, i, j, candBoard)
+                    cand_board = UpdateCandidates(n, i, j, cand_board)
 
     #  Do backtrack solving but use the list of candidates in each cell to reduce search depth
     found_empty_cell = FindFirstEmptyCell(board)
@@ -268,7 +268,7 @@ def SolvewBacktrack(board, initial=True):
 
 ###############################################################################
 
-def FindHiddenSingle(board, candBoard, UnitFunc, CoordFunc):
+def FindHiddenSingle(board, cand_board, UnitFunc, CoordFunc):
     """ Find if row, column or block has only 1 cell a particular number can
     go into. """
     values = []
@@ -276,7 +276,7 @@ def FindHiddenSingle(board, candBoard, UnitFunc, CoordFunc):
     # Search through 9 cell unit (row, column or block)
     for u in range(0, 9):
         cells = UnitFunc(board, u)
-        candsInUnit = UnitFunc(candBoard, u)
+        candsInUnit = UnitFunc(cand_board, u)
 
         # Loop through all possible numbers
         for n in range(1, 10):
@@ -294,21 +294,21 @@ def FindHiddenSingle(board, candBoard, UnitFunc, CoordFunc):
     return values
 
 
-def HiddenSingles(board, candBoard):
+def HiddenSingles(board, cand_board):
     """ Find hidden singles, ie situations where a number has only one cell
     it can go in on a row, column or block """
 
     # Rows
-    values = FindHiddenSingle(board, candBoard, GetRowCells, lambda b, k: (b, k))
+    values = FindHiddenSingle(board, cand_board, GetRowCells, lambda b, k: (b, k))
     # Columns
-    values += FindHiddenSingle(board, candBoard, GetColCells, lambda b, k: (k, b))
+    values += FindHiddenSingle(board, cand_board, GetColCells, lambda b, k: (k, b))
     # Block
-    values += FindHiddenSingle(board, candBoard, GetBlockCells_BlockID, GetCellCoordsFromBlockID)
+    values += FindHiddenSingle(board, cand_board, GetBlockCells_BlockID, GetCellCoordsFromBlockID)
 
     return values
 
 
-def FindNakedPair(board, candBoard, UnitFunc, CoordFunc):
+def FindNakedPair(board, cand_board, UnitFunc, CoordFunc):
     """ Finds cells with just 2 candidates in a cell where that pattern is
     repeated  once in same row, block or column ie 1 2, 1 2
     Means same values cannot be in other cells along that row, block or column
@@ -321,7 +321,7 @@ def FindNakedPair(board, candBoard, UnitFunc, CoordFunc):
         pair_loc = []
 
         cells = UnitFunc(board, u)
-        cands = UnitFunc(candBoard, u)
+        cands = UnitFunc(cand_board, u)
 
         # Loop through each cell of unit see if any pairs (cells with 2 cands)
         for c in range(0, 9):
@@ -348,20 +348,20 @@ def FindNakedPair(board, candBoard, UnitFunc, CoordFunc):
     return values, removal_values
 
 
-def NakedPairs(board, candBoard):
+def NakedPairs(board, cand_board):
     # Rows
-    values_row, removal_values_row = FindNakedPair(board, candBoard, GetRowCells, lambda b, k: (b, k))
+    values_row, removal_values_row = FindNakedPair(board, cand_board, GetRowCells, lambda b, k: (b, k))
 
     # Columns
-    values_col, removal_values_col = FindNakedPair(board, candBoard, GetColCells, lambda b, k: (k, b))
+    values_col, removal_values_col = FindNakedPair(board, cand_board, GetColCells, lambda b, k: (k, b))
 
     # Blocks
-    values_block, removal_values_block = FindNakedPair(board, candBoard, GetBlockCells_BlockID, GetCellCoordsFromBlockID)
+    values_block, removal_values_block = FindNakedPair(board, cand_board, GetBlockCells_BlockID, GetCellCoordsFromBlockID)
 
     return values_row + values_col + values_block, removal_values_row + removal_values_col + removal_values_block
 
 
-def FindBoxLinePair(board, candBoard, UnitFunc, isRow):
+def FindBoxLinePair(board, cand_board, UnitFunc, isRow):
     """ Finds all box-line pairs in columns or rows.
     Box-line pair is when a particular number can only be in two cells on that row/column,
     both of which are in the same block.  Means can eliminate that candidate in
@@ -371,7 +371,7 @@ def FindBoxLinePair(board, candBoard, UnitFunc, isRow):
     # Search through 9 cell unit (row or column)
     for u in range(0, 9):
         cells = UnitFunc(board, u)
-        candsInUnit = UnitFunc(candBoard, u)
+        candsInUnit = UnitFunc(cand_board, u)
 
         # Loop through all possible numbers
         for n in range(1, 10):
@@ -396,7 +396,7 @@ def FindBoxLinePair(board, candBoard, UnitFunc, isRow):
                     # Mark candidates with value n in same block for removal
                     b = GetBlockIDFromCellCoords(i1, j1)
                     rcells = GetBlockCells_BlockID(board, b)
-                    rcands = GetBlockCells_BlockID(candBoard, b)
+                    rcands = GetBlockCells_BlockID(cand_board, b)
 
                     def LocFunc(k):
                         return GetCellCoordsFromBlockID(b, k)
@@ -405,14 +405,14 @@ def FindBoxLinePair(board, candBoard, UnitFunc, isRow):
     return values, removal_values
 
 
-def BoxLinePairs(board, candBoard):
-    values_row, removal_values_row = FindBoxLinePair(board, candBoard, GetRowCells, isRow=True)
-    values_col, removal_values_col = FindBoxLinePair(board, candBoard, GetColCells, isRow=False)
+def BoxLinePairs(board, cand_board):
+    values_row, removal_values_row = FindBoxLinePair(board, cand_board, GetRowCells, isRow=True)
+    values_col, removal_values_col = FindBoxLinePair(board, cand_board, GetColCells, isRow=False)
 
     return values_row + values_col, removal_values_row + removal_values_col
 
 
-def PointingPairs(board, candBoard):
+def PointingPairs(board, cand_board):
     """ Finds all pointing pairs in either rows or columns.
     Pointing pair is if the only 2 cells a particular number can go in a block
     happen to be in same row or column. Means can eliminate that number as
@@ -422,7 +422,7 @@ def PointingPairs(board, candBoard):
     # Loop through each block
     for b in range(0, 9):
         cellsInBlock = GetBlockCells_BlockID(board, b)
-        candsInBlock = GetBlockCells_BlockID(candBoard, b)
+        candsInBlock = GetBlockCells_BlockID(cand_board, b)
 
         # Loop through all possible numbers
         for n in range(1, 10):
@@ -445,7 +445,7 @@ def PointingPairs(board, candBoard):
 
                     # Mark candidates with value n in same row/col for removal
                     rcells = GetRowCells(board, i1) if i1 == i2 else GetColCells(board, j1)
-                    rcands = GetRowCells(candBoard, i1) if i1 == i2 else GetColCells(candBoard, j1)
+                    rcands = GetRowCells(cand_board, i1) if i1 == i2 else GetColCells(cand_board, j1)
 
                     def LocFunc(rc):
                         return (i1, rc) if i1 == i2 else (rc, j1)
@@ -454,7 +454,7 @@ def PointingPairs(board, candBoard):
     return values, removal_values
 
 
-def FindBoxTriples(board, candBoard, UnitFunc, CoordFunc):
+def FindBoxTriples(board, cand_board, UnitFunc, CoordFunc):
     """ Finds all box triples.  This is where only 3 candidates in a given block row or column.  Means we can remove
     the same candidates in the same row/col outie the block. """
 
@@ -463,7 +463,7 @@ def FindBoxTriples(board, candBoard, UnitFunc, CoordFunc):
     # For each row/col
     for u in range(0, 9):
         cells = UnitFunc(board, u)      # Cells in this row or column only
-        cands = UnitFunc(candBoard, u)  # Cands in this row or column only
+        cands = UnitFunc(cand_board, u)  # Cands in this row or column only
 
         # Loop thro each set of 3 cells in each block in this row/col
         for b in range(0, 3):
@@ -491,7 +491,7 @@ def FindBoxTriples(board, candBoard, UnitFunc, CoordFunc):
                     # Mark candidates with value n in same block for removal
                     b = GetBlockIDFromCellCoords(trip_loc[0][0], trip_loc[0][1])
                     rbcells = GetBlockCells_BlockID(board, b)
-                    rbcands = GetBlockCells_BlockID(candBoard, b)
+                    rbcands = GetBlockCells_BlockID(cand_board, b)
                     removal_values += RemovalCandidates(rbcells, rbcands, x, lambda k: GetCellCoordsFromBlockID(b, k), trip_loc)
                     removal_values += RemovalCandidates(rbcells, rbcands, y, lambda k: GetCellCoordsFromBlockID(b, k), trip_loc)
                     removal_values += RemovalCandidates(rbcells, rbcands, z, lambda k: GetCellCoordsFromBlockID(b, k), trip_loc)
@@ -499,16 +499,16 @@ def FindBoxTriples(board, candBoard, UnitFunc, CoordFunc):
     return values, removal_values
 
 
-def BoxTriples(board, candBoard):
+def BoxTriples(board, cand_board):
     # Rows
-    values_row, removal_values_row = FindBoxTriples(board, candBoard, GetRowCells, lambda u, k: (u, k))
+    values_row, removal_values_row = FindBoxTriples(board, cand_board, GetRowCells, lambda u, k: (u, k))
     # Columns
-    values_col, removal_values_col = FindBoxTriples(board, candBoard, GetColCells, lambda u, k: (k, u))
+    values_col, removal_values_col = FindBoxTriples(board, cand_board, GetColCells, lambda u, k: (k, u))
 
     return values_row + values_col, removal_values_row + removal_values_col
 
 
-def FindXWing(board, candBoard, UnitFunc, CoordFunc):
+def FindXWing(board, cand_board, UnitFunc, CoordFunc):
     values = []
 
     # Loop through all possible numbers
@@ -519,7 +519,7 @@ def FindXWing(board, candBoard, UnitFunc, CoordFunc):
         # For each row/col
         for u in range(0, 9):
             cells = UnitFunc(board, u)  # Cells in this row or column only
-            cands = UnitFunc(candBoard, u)  # Cands in this row or column only
+            cands = UnitFunc(cand_board, u)  # Cands in this row or column only
 
             count = 0
             idx = []
@@ -541,7 +541,7 @@ def FindXWing(board, candBoard, UnitFunc, CoordFunc):
     return values
 
 
-def XWingRemovals(board, candBoard, xwings):
+def XWingRemovals(board, cand_board, xwings):
     removal_values = []
     for xwing in xwings:
         n, (i1, j1), (i2, j2), (i3, j3), (i4, j4) = xwing
@@ -550,33 +550,33 @@ def XWingRemovals(board, candBoard, xwings):
         cols = list({j1, j2, j3, j4})
 
         for row in rows:
-            rowCells = GetRowCells(board, row)
-            rowCands = GetRowCells(candBoard, row)
+            row_cells = GetRowCells(board, row)
+            row_cands = GetRowCells(cand_board, row)
 
             for col in range(0, 9):
-                if col not in cols and rowCells[col] == 0 and n in rowCands[col]:
+                if col not in cols and row_cells[col] == 0 and n in row_cands[col]:
                     removal_values += [(n, row, col)]
 
         for col in cols:
-            colCells = GetColCells(board, col)
-            colCands = GetColCells(candBoard, col)
+            col_cells = GetColCells(board, col)
+            col_cands = GetColCells(cand_board, col)
 
             for row in range(0, 9):
-                if row not in rows and colCells[row] == 0 and n in colCands[row]:
+                if row not in rows and col_cells[row] == 0 and n in col_cands[row]:
                     removal_values += [(n, row, col)]
 
     return removal_values
 
 
-def XWings(board, candBoard):
+def XWings(board, cand_board):
     # Rows
-    row_values = FindXWing(board, candBoard, GetRowCells, lambda b, k: (b, k))
+    row_values = FindXWing(board, cand_board, GetRowCells, lambda b, k: (b, k))
     # Columns
-    col_values = FindXWing(board, candBoard, GetColCells, lambda b, k: (k, b))
+    col_values = FindXWing(board, cand_board, GetColCells, lambda b, k: (k, b))
 
     values = row_values + col_values
 
-    removal_values = XWingRemovals(board, candBoard, values)
+    removal_values = XWingRemovals(board, cand_board, values)
 
     return values, removal_values
 

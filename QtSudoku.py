@@ -61,7 +61,7 @@ class Candidate(QLabel):
 #####################
 
 class Cell(QLabel):
-    selected = Signal(object, int)
+    selected = Signal(object, int) # Class to define the type of signals this can emit
 
     def __init__(self, parent, str_value, cand_set, i, j):
         super(QLabel, self).__init__(str_value, parent)
@@ -105,7 +105,7 @@ class Cell(QLabel):
 
     def ConnectCelltoWindow(self, ClickFunc):
         """ Specifies the function to pass events to when this cell is clicked on by the
-        mouse """
+        mouse (signal called selected is emitted in mouseReleaseEvent below)"""
         self.selected.connect(ClickFunc)
 
     def CanEdit(self):
@@ -124,7 +124,9 @@ class Cell(QLabel):
             if str_value != ' ':
                 # Delete all candidate label widgets
                 for i in reversed(range(self.gridLayoutBox.count())):
-                    self.gridLayoutBox.itemAt(i).widget().setParent(None)
+                    widget = self.gridLayoutBox.itemAt(i).widget()
+                    widget.setParent(None)
+                    widget.deleteLater()
             else:
                 self.CreateCandidates()
 
@@ -179,7 +181,10 @@ class Cell(QLabel):
         return 0
 
     def mouseReleaseEvent(self, QMouseEvent):
-        """ Handle cell being clicked on """
+        """ Handle cell being clicked on.  Will find if a candidate has been clicked, if so cand set the number (1-9)
+         of the candidate clciked.  If no valid candidate cand=0.
+         This cell object and cand then emitted as a signal to connected slots (The main window class)
+         """
 
         cand = 0
 
@@ -213,73 +218,76 @@ class Box(QLabel):
         self.gridLayoutBox.addWidget(cell_QLabel, i, j)
 
 
-#####################
-
 class SudokuMainWindow(QMainWindow):
     def __init__(self, board, candBoard):
         super(QMainWindow, self).__init__()
 
-        # Variables
+        board_layout, side_ui_layout = self.SetupWindow()
+
+        # Variables (Data)
         self.origBoard = board
         self.currBoard = deepcopy(board)
         self.cand_board = deepcopy(candBoard)
-        self.cells = [[None for _ in range(9)] for _ in range(9)]
+
+        # Variables (UI)
+        self.cells = self.CreateBoard(board, candBoard, self, board_layout)
         self.selected_cell = None
 
-        # Setup function calls
+        # Create the msg text ui element to pass messages to user
+        self.msgText = QLabel('Num Solutions: ?')
+        self.msgText.setStyleSheet("border: 1px solid black;")
+        side_ui_layout.addWidget(self.msgText)
 
-        # Setup Window
+        self.CreateButtons(self, side_ui_layout)
+
+    def SetupWindow(self):
+        # Setup Window - calls to QMainWindow methods (not overridden)
         self.setGeometry(500, 30, 1200, 900)
         self.setWindowTitle("Simple Sudoku")
         self.setStyleSheet("background-color: grey;")
 
-        # Create sudoku board display, with separate areas for board and
-        # GUI buttons
         central_widget = QWidget(self)
         self.setCentralWidget(central_widget)
 
+        # Create UI layouts
         outer_layout = QGridLayout()
+        board_layout = QGridLayout()
+        side_ui_layout = QVBoxLayout()
         central_widget.setLayout(outer_layout)
 
-        grid_layout = QGridLayout()
-        # Span multiple columns / rows in order row, column, rowSpan, columnSpan
-        # We will have 12 columns with first 9 being the sudoku board and last
-        # 3 the UI.
-        outer_layout.addLayout(grid_layout, 0, 0, 9, 9)
-        self.CreateBoard(board, candBoard, self, grid_layout)
+        # Create layouts for sudoku board and side UI buttons on 12 x 9 UI grid
+        # Sudoku board 9x9 on the UI grid, side UI 3 columns wide and 4 high (3rd to 6th row)
+        outer_layout.addLayout(board_layout, 0, 0, 9, 9)
+        outer_layout.addLayout(side_ui_layout, 2, 9, 4, 3)
 
-        v_layout = QVBoxLayout()
-        # The UI will start at row 2 and be 4 rows rows deep
-        outer_layout.addLayout(v_layout, 2, 9, 4, 3)
+        return board_layout, side_ui_layout
 
-        self.msgText = QLabel('Num Solutions: ?')
-        self.msgText.setStyleSheet("border: 1px solid black;")
-        v_layout.addWidget(self.msgText)
-
-        self.CreateButtons(self, v_layout)
-
-    def CreateBoard(self, board, candBoard, parent, layout):
-        """ Creates board display with initial board values and candidates """
-        boxes = [[None for _ in range(3)] for _ in range(3)]
-
-        for bi in range(0, 3):
-            for bj in range(0, 3):
-                boxes[bi][bj] = Box(parent)
-                layout.addWidget(boxes[bi][bj], bi, bj)
-
-        for i in range(0, 9):
-            for j in range(0, 9):
-                cand_set = candBoard[i][j]
-                bi, bj = i // 3, j // 3
-                parent_box = boxes[bi][bj]
-                self.cells[i][j] = Cell(parent_box, Value2String(board[i][j]), cand_set, i, j)
-                self.cells[i][j].ConnectCelltoWindow(self.CellClicked)
-                parent_box.AddCell(self.cells[i][j], i - 3 * bi, j - 3 * bj)
-
-    def AddButton(self, layout, title, func):
+    @staticmethod
+    def AddButton(layout, title, func):
         button = QPushButton(title)
         button.clicked.connect(func)
         layout.addWidget(button)
+
+    @staticmethod
+    def CreateBox(parent, layout, bi, bj):
+        box = Box(parent)
+        layout.addWidget(box, bi, bj)
+        return box
+
+    @staticmethod
+    def CreateCell(i, j, boxes, board, candBoard, click_func):
+        bi, bj = i // 3, j // 3
+        parent_box = boxes[bi][bj]
+        cell = Cell(parent_box, Value2String(board[i][j]), candBoard[i][j], i, j)
+        cell.ConnectCelltoWindow(click_func)
+        parent_box.AddCell(cell, i - 3 * bi, j - 3 * bj)
+        return cell
+
+    def CreateBoard(self, board, candBoard, parent, layout):
+        """ Creates board display with initial board values and candidates """
+        # Create boxes for each 9x9 block
+        boxes = [[self.CreateBox(parent, layout, bi, bj) for bj in range(3)] for bi in range(3)]
+        return [[self.CreateCell(i, j, boxes, board, candBoard, self.CellClicked) for j in range(9)] for i in range(9)]
 
     def CreateButtons(self, parent, layout):
         """ Create the buttons toolbar for solving options """
@@ -298,9 +306,9 @@ class SudokuMainWindow(QMainWindow):
         self.AddButton(layout, 'Re-generate Candidates', lambda: self.RegenerateCandidates())
         self.AddButton(layout, 'Clear Highlights', lambda: self.ClearHighlights())
 
-
     def ResetBoard(self):
         self.currBoard = self.origBoard
+        self.msgText.setStyleSheet("border: 1px solid black; color: black;")
         self.msgText.setText('Num Solutions: ?')
 
         for i in range(0, 9):
@@ -313,29 +321,27 @@ class SudokuMainWindow(QMainWindow):
 
     def CellClicked(self, cell, cand):
         """ Handler function for a cell being clicked.  Makes sure only 1 cell
-        is selected at a time ie only 1 cell has focus for input. """
+        is selected at a time ie only 1 cell has focus for input.
+        cand is the number of the candidate clicked, if none was clicked then cand is zero
+        cell is the Cell object that was clicked
+        """
         if self.selected_cell and self.selected_cell is not cell:
             self.selected_cell.Deselect()
 
         self.selected_cell = cell
 
-        value_str = ', with value ' + self.selected_cell.cellString if self.selected_cell else ''
-        cand_str = ', changed candidate ' + str(cand) if cand > 0 else ''
-
-        if cand > 0:
+        if cand > 0:  # If candidate clicked then toggle it
             i, j = self.selected_cell.i, self.selected_cell.j
             if cand in self.cand_board[i][j]:
                 self.cand_board[i][j].remove(cand)
             else:
                 self.cand_board[i][j].add(cand)
 
+        value_str = ', with value ' + self.selected_cell.cellString if self.selected_cell else ''
+        cand_str = ', changed candidate ' + str(cand) if cand > 0 else ''
+
         print('Clicked on cell (' + str(self.selected_cell.i) + ',' \
               + str(self.selected_cell.j) + ')' + value_str + cand_str)
-
-    def FillinCell(self, i, j, value):
-        """ Will fill in value in a cell if it is empty/unknown """
-
-        self.cells[i][j].UpdateValue(Value2String(value))
 
     def RemoveCandidatesBasedonCellValue(self, i, j, value):
         """ If have assigned a value to cell i,j then remove the value as a
@@ -357,6 +363,7 @@ class SudokuMainWindow(QMainWindow):
 
     def ResetAllCellsValid(self):
         """ Remove indication of invalid cells """
+        self.msgText.setStyleSheet("border: 1px solid black; color: black;")
         for i in range(0, 9):
             for j in range(0, 9):
                 self.cells[i][j].SetValidity(is_invalid=False)
@@ -366,6 +373,7 @@ class SudokuMainWindow(QMainWindow):
         or block.  List of duplicates passed in as list of tuple (i,j) pairs. """
         self.ResetAllCellsValid()
         for dup in dups:
+            self.msgText.setStyleSheet("border: 1px solid black; color: red;")
             self.cells[dup[0]][dup[1]].SetValidity(is_invalid=True)
 
     def UpdateChangedCells(self, prevBoard):
@@ -374,7 +382,7 @@ class SudokuMainWindow(QMainWindow):
         for i in range(0, 9):
             for j in range(0, 9):
                 if prevBoard[i][j] != self.currBoard[i][j]:
-                    self.FillinCell(i, j, self.currBoard[i][j])
+                    self.cells[i][j].UpdateValue(Value2String(self.currBoard[i][j]))
                     self.RemoveCandidatesBasedonCellValue(i, j, self.currBoard[i][j])
 
     def Solve(self):
@@ -388,28 +396,27 @@ class SudokuMainWindow(QMainWindow):
         num_solns = 0
 
         if sd.CheckValid(dups):
-            self.FillinSingleCandidates()
             prev_board = deepcopy(self.currBoard)
 
             print('Start Solver')
             num_solns, soln_board = sd.SolvewBacktrack(self.currBoard)
             print('End Solver')
 
-            if num_solns == 0:
+            # Prob not needed but here as a failsafe
+            dups = sd.FindDuplicates(self.currBoard)
+            if not sd.CheckValid(dups):
+                print('Invalid')
+                num_solns = 0
+            elif num_solns == 0:
                 print('No solution')
-                self.msgText.setText('Num Solutions: 0')
             elif num_solns == 1:
+                print('Single Solution')
                 self.currBoard = soln_board
                 self.UpdateChangedCells(prev_board)
-
-                dups = sd.FindDuplicates(self.currBoard)
-                if not sd.CheckValid(dups):
-                    print('Invalid')
-                    num_solns = 0
-                else:
-                    print('Single Solution')
             else:
                 print('Multiple Solutions')
+
+        self.ShowInvalidCells(dups)
 
         if num_solns == 1:
             self.msgText.setStyleSheet("border: 1px solid black; color: black;")
@@ -417,8 +424,6 @@ class SudokuMainWindow(QMainWindow):
             self.msgText.setStyleSheet("border: 1px solid black; color: red;")
 
         self.msgText.setText('Num Solutions: ' + str(num_solns))
-
-        self.ShowInvalidCells(dups)
 
     def FillinSingleCandidatesStep(self):
         """ Look for cells with only 1 candidate and fill them in.
@@ -583,17 +588,18 @@ class SudokuMainWindow(QMainWindow):
         key_str = event.text()
 
         if self.selected_cell and self.selected_cell.CanEdit():
+            i, j = self.selected_cell.i, self.selected_cell.j
 
             # If number key pressed
-            if QtCore.Qt.Key_1 <= key <= QtCore.Qt.Key_9:
+            if QtCore.Qt.Key_1 <= key <= QtCore.Qt.Key_9 and self.currBoard[i][j] != int(key_str):
                 self.selected_cell.UpdateValue(key_str)
-                self.currBoard[self.selected_cell.i][self.selected_cell.j] = int(key_str)
+                self.currBoard[i][j] = int(key_str)
             #                self.UpdatePossibleCandidates()
 
-            if key == QtCore.Qt.Key_Backspace:
+            if key == QtCore.Qt.Key_Backspace and self.currBoard[i][j] != 0:
+                self.msgText.setText('Num Solutions: ?')
                 self.selected_cell.UpdateValue(' ')
-                self.currBoard[self.selected_cell.i][self.selected_cell.j] = 0
-            #                self.cand_board = sd.SolveCandidates(self.currBoard)
+                self.currBoard[i][j] = 0
 
             dups = sd.FindDuplicates(self.currBoard)
             if not sd.CheckValid(dups):
