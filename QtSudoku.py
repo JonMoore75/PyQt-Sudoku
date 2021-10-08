@@ -306,43 +306,6 @@ class SudokuMainWindow(QMainWindow):
         self.AddButton(layout, 'Re-generate Candidates', lambda: self.RegenerateCandidates())
         self.AddButton(layout, 'Clear Highlights', lambda: self.ClearHighlights())
 
-    def ResetBoard(self):
-        self.currBoard = self.origBoard
-        self.msgText.setStyleSheet("border: 1px solid black; color: black;")
-        self.msgText.setText('Num Solutions: ?')
-
-        for i in range(0, 9):
-            for j in range(0, 9):
-                if self.currBoard != 0:
-                    str_value = Value2String(self.currBoard[i][j])
-                    self.cells[i][j].UpdateValue(str_value)
-
-        self.RegenerateCandidates()
-
-    def CellClicked(self, cell, cand):
-        """ Handler function for a cell being clicked.  Makes sure only 1 cell
-        is selected at a time ie only 1 cell has focus for input.
-        cand is the number of the candidate clicked, if none was clicked then cand is zero
-        cell is the Cell object that was clicked
-        """
-        if self.selected_cell and self.selected_cell is not cell:
-            self.selected_cell.Deselect()
-
-        self.selected_cell = cell
-
-        if cand > 0:  # If candidate clicked then toggle it
-            i, j = self.selected_cell.i, self.selected_cell.j
-            if cand in self.cand_board[i][j]:
-                self.cand_board[i][j].remove(cand)
-            else:
-                self.cand_board[i][j].add(cand)
-
-        value_str = ', with value ' + self.selected_cell.cellString if self.selected_cell else ''
-        cand_str = ', changed candidate ' + str(cand) if cand > 0 else ''
-
-        print('Clicked on cell (' + str(self.selected_cell.i) + ',' \
-              + str(self.selected_cell.j) + ')' + value_str + cand_str)
-
     def RemoveCandidatesBasedonCellValue(self, i, j, value):
         """ If have assigned a value to cell i,j then remove the value as a
         candidates from the block, row and column of that cell """
@@ -384,6 +347,27 @@ class SudokuMainWindow(QMainWindow):
                 if prevBoard[i][j] != self.currBoard[i][j]:
                     self.cells[i][j].UpdateValue(Value2String(self.currBoard[i][j]))
                     self.RemoveCandidatesBasedonCellValue(i, j, self.currBoard[i][j])
+
+    def HighlightRemovals(self, rCands):
+        """ Highlight candidates that can be removed based on list rCands """
+        for rCand in rCands:
+            n, i, j = rCand
+            self.cells[i][j].HiliteCandidates(set([n]), colour='red')
+
+    # Methods called by UI buttons
+
+    def ResetBoard(self):
+        self.currBoard = self.origBoard
+        self.msgText.setStyleSheet("border: 1px solid black; color: black;")
+        self.msgText.setText('Num Solutions: ?')
+
+        for i in range(0, 9):
+            for j in range(0, 9):
+                if self.currBoard != 0:
+                    str_value = Value2String(self.currBoard[i][j])
+                    self.cells[i][j].UpdateValue(str_value)
+
+        self.RegenerateCandidates()
 
     def Solve(self):
         """ Solves the board using the backtracking alogorithm """
@@ -464,11 +448,16 @@ class SudokuMainWindow(QMainWindow):
 
         self.ShowInvalidCells(dups)
 
-    def ClearHighlights(self):
-        """ Remove all highlight from candidatyes """
+    def UpdatePossibleCandidates(self):
+        """ Removes any candidates that are no longer valid.
+        Does NOT reset candidate changes made previously """
+        self.ClearHighlights()
+        self.cand_board = sd.SolveCandidatesIntersect(self.currBoard, self.cand_board)
+
         for i in range(0, 9):
             for j in range(0, 9):
-                self.cells[i][j].ClearHilites()
+                cand_set = self.cand_board[i][j]
+                self.cells[i][j].UpdateCandidates(cand_set)
 
     def HighlightHiddenSingles(self):
         """ Highlight where there are hidden single candidates """
@@ -490,12 +479,6 @@ class SudokuMainWindow(QMainWindow):
             self.cells[i2][j2].HiliteCandidates(set([a, b]))
 
         self.HighlightRemovals(rCands)
-
-    def HighlightRemovals(self, rCands):
-        """ Highlight candidates that can be removed based on list rCands """
-        for rCand in rCands:
-            n, i, j = rCand
-            self.cells[i][j].HiliteCandidates(set([n]), colour='red')
 
     def HighlightPointingPairs(self):
         """ Highlight where there are pointing pair candidates """
@@ -562,16 +545,13 @@ class SudokuMainWindow(QMainWindow):
                 cand_set = self.cand_board[i][j]
                 self.cells[i][j].UpdateCandidates(cand_set)
 
-    def UpdatePossibleCandidates(self):
-        """ Removes any candidates that are no longer valid.
-        Does NOT reset candidate changes made previously """
-        self.ClearHighlights()
-        self.cand_board = sd.SolveCandidatesIntersect(self.currBoard, self.cand_board)
-
+    def ClearHighlights(self):
+        """ Remove all highlight from candidatyes """
         for i in range(0, 9):
             for j in range(0, 9):
-                cand_set = self.cand_board[i][j]
-                self.cells[i][j].UpdateCandidates(cand_set)
+                self.cells[i][j].ClearHilites()
+
+    # UI Events
 
     def mouseReleaseEvent(self, QMouseEvent):
         """ If mouse clicked not on child widget such as a cell """
@@ -606,6 +586,30 @@ class SudokuMainWindow(QMainWindow):
                 print('Invalid', dups)
 
             self.ShowInvalidCells(dups)
+
+    def CellClicked(self, cell, cand):
+        """ Handler function for a cell being clicked.  Makes sure only 1 cell
+        is selected at a time ie only 1 cell has focus for input.
+        cand is the number of the candidate clicked, if none was clicked then cand is zero
+        cell is the Cell object that was clicked
+        """
+        if self.selected_cell and self.selected_cell is not cell:
+            self.selected_cell.Deselect()
+
+        self.selected_cell = cell
+
+        if cand > 0:  # If candidate clicked then toggle it
+            i, j = self.selected_cell.i, self.selected_cell.j
+            if cand in self.cand_board[i][j]:
+                self.cand_board[i][j].remove(cand)
+            else:
+                self.cand_board[i][j].add(cand)
+
+        value_str = ', with value ' + self.selected_cell.cellString if self.selected_cell else ''
+        cand_str = ', changed candidate ' + str(cand) if cand > 0 else ''
+
+        print('Clicked on cell (' + str(self.selected_cell.i) + ',' \
+              + str(self.selected_cell.j) + ')' + value_str + cand_str)
 
 
 ###############################################################################
