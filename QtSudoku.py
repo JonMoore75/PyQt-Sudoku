@@ -219,18 +219,18 @@ class Box(QLabel):
 
 
 class SudokuMainWindow(QMainWindow):
-    def __init__(self, board, candBoard):
+    def __init__(self, board, cand_board):
         super(QMainWindow, self).__init__()
 
         board_layout, side_ui_layout = self.SetupWindow()
 
         # Variables (Data)
-        self.origBoard = board
-        self.currBoard = deepcopy(board)
-        self.cand_board = deepcopy(candBoard)
+        self.orig_board = board
+        self.curr_board = deepcopy(board)
+        self.cand_board = deepcopy(cand_board)
 
         # Variables (UI)
-        self.cells = self.CreateBoard(board, candBoard, self, board_layout)
+        self.cells = self.CreateBoard(board, cand_board, self, board_layout)
         self.selected_cell = None
 
         # Create the msg text ui element to pass messages to user
@@ -275,19 +275,19 @@ class SudokuMainWindow(QMainWindow):
         return box
 
     @staticmethod
-    def CreateCell(i, j, boxes, board, candBoard, click_func):
+    def CreateCell(i, j, boxes, board, cand_board, click_func):
         bi, bj = i // 3, j // 3
         parent_box = boxes[bi][bj]
-        cell = Cell(parent_box, Value2String(board[i][j]), candBoard[i][j], i, j)
+        cell = Cell(parent_box, Value2String(board[i][j]), cand_board[i][j], i, j)
         cell.ConnectCelltoWindow(click_func)
         parent_box.AddCell(cell, i - 3 * bi, j - 3 * bj)
         return cell
 
-    def CreateBoard(self, board, candBoard, parent, layout):
+    def CreateBoard(self, board, cand_board, parent, layout):
         """ Creates board display with initial board values and candidates """
         # Create boxes for each 9x9 block
         boxes = [[self.CreateBox(parent, layout, bi, bj) for bj in range(3)] for bi in range(3)]
-        return [[self.CreateCell(i, j, boxes, board, candBoard, self.CellClicked) for j in range(9)] for i in range(9)]
+        return [[self.CreateCell(i, j, boxes, board, cand_board, self.CellClicked) for j in range(9)] for i in range(9)]
 
     def CreateButtons(self, parent, layout):
         """ Create the buttons toolbar for solving options """
@@ -344,9 +344,9 @@ class SudokuMainWindow(QMainWindow):
         are no longer valid due to the new values filled in """
         for i in range(0, 9):
             for j in range(0, 9):
-                if prevBoard[i][j] != self.currBoard[i][j]:
-                    self.cells[i][j].UpdateValue(Value2String(self.currBoard[i][j]))
-                    self.RemoveCandidatesBasedonCellValue(i, j, self.currBoard[i][j])
+                if prevBoard[i][j] != self.curr_board[i][j]:
+                    self.cells[i][j].UpdateValue(Value2String(self.curr_board[i][j]))
+                    self.RemoveCandidatesBasedonCellValue(i, j, self.curr_board[i][j])
 
     def HighlightRemovals(self, rCands):
         """ Highlight candidates that can be removed based on list rCands """
@@ -357,37 +357,37 @@ class SudokuMainWindow(QMainWindow):
     # Methods called by UI buttons
 
     def ResetBoard(self):
-        self.currBoard = self.origBoard
+        self.curr_board = self.orig_board
         self.msgText.setStyleSheet("border: 1px solid black; color: black;")
         self.msgText.setText('Num Solutions: ?')
 
         for i in range(0, 9):
             for j in range(0, 9):
-                if self.currBoard != 0:
-                    str_value = Value2String(self.currBoard[i][j])
+                if self.curr_board != 0:
+                    str_value = Value2String(self.curr_board[i][j])
                     self.cells[i][j].UpdateValue(str_value)
 
         self.RegenerateCandidates()
 
     def Solve(self):
         """ Solves the board using the backtracking alogorithm """
-        if sd.BoardSolved(self.currBoard):
+        if sd.BoardSolved(self.curr_board):
             return
 
         self.ClearHighlights()
-        dups = sd.FindDuplicates(self.currBoard)
+        dups = sd.FindDuplicates(self.curr_board)
 
         num_solns = 0
 
         if sd.CheckValid(dups):
-            prev_board = deepcopy(self.currBoard)
+            prev_board = deepcopy(self.curr_board)
 
             print('Start Solver')
-            num_solns, soln_board = sd.SolvewBacktrack(self.currBoard)
+            num_solns, soln_board = sd.SolvewBacktrack(self.curr_board)
             print('End Solver')
 
             # Prob not needed but here as a failsafe
-            dups = sd.FindDuplicates(self.currBoard)
+            dups = sd.FindDuplicates(self.curr_board)
             if not sd.CheckValid(dups):
                 print('Invalid')
                 num_solns = 0
@@ -395,7 +395,7 @@ class SudokuMainWindow(QMainWindow):
                 print('No solution')
             elif num_solns == 1:
                 print('Single Solution')
-                self.currBoard = soln_board
+                self.curr_board = soln_board
                 self.UpdateChangedCells(prev_board)
             else:
                 print('Multiple Solutions')
@@ -413,15 +413,15 @@ class SudokuMainWindow(QMainWindow):
         """ Look for cells with only 1 candidate and fill them in.
         Updates the candidates after finished """
         self.ClearHighlights()
-        dups = sd.FindDuplicates(self.currBoard)
+        dups = sd.FindDuplicates(self.curr_board)
         if sd.CheckValid(dups):
-            prev_board = deepcopy(self.currBoard)
+            prev_board = deepcopy(self.curr_board)
 
-            changed, self.currBoard, self.cand_board = sd.FillSingleCandidates(self.currBoard, self.cand_board)
+            changed, self.curr_board, self.cand_board = sd.FillSingleCandidates(self.curr_board, self.cand_board)
             if changed:
                 self.UpdateChangedCells(prev_board)
 
-            dups = sd.FindDuplicates(self.currBoard)
+            dups = sd.FindDuplicates(self.curr_board)
             if not sd.CheckValid(dups):
                 print('Invalid')
 
@@ -431,18 +431,18 @@ class SudokuMainWindow(QMainWindow):
         """ Look for cells with only 1 candidate and fill them in
         Then update candidates and iterate until no more changes """
         self.ClearHighlights()
-        dups = sd.FindDuplicates(self.currBoard)
+        dups = sd.FindDuplicates(self.curr_board)
         if sd.CheckValid(dups):
             not_done = True
 
-            prev_board = deepcopy(self.currBoard)
+            prev_board = deepcopy(self.curr_board)
 
             while not_done:
-                not_done, self.currBoard, self.cand_board = sd.FillSingleCandidates(self.currBoard, self.cand_board)
+                not_done, self.curr_board, self.cand_board = sd.FillSingleCandidates(self.curr_board, self.cand_board)
 
             self.UpdateChangedCells(prev_board)
 
-            dups = sd.FindDuplicates(self.currBoard)
+            dups = sd.FindDuplicates(self.curr_board)
             if not sd.CheckValid(dups):
                 print('Invalid')
 
@@ -452,7 +452,7 @@ class SudokuMainWindow(QMainWindow):
         """ Removes any candidates that are no longer valid.
         Does NOT reset candidate changes made previously """
         self.ClearHighlights()
-        self.cand_board = sd.SolveCandidatesIntersect(self.currBoard, self.cand_board)
+        self.cand_board = sd.SolveCandidatesIntersect(self.curr_board, self.cand_board)
 
         for i in range(0, 9):
             for j in range(0, 9):
@@ -462,7 +462,7 @@ class SudokuMainWindow(QMainWindow):
     def HighlightHiddenSingles(self):
         """ Highlight where there are hidden single candidates """
         self.ClearHighlights()
-        hidden_singles = sd.HiddenSingles(self.currBoard, self.cand_board)
+        hidden_singles = sd.HiddenSingles(self.curr_board, self.cand_board)
 
         for hiddenSingle in hidden_singles:
             i, j, n = hiddenSingle
@@ -471,7 +471,7 @@ class SudokuMainWindow(QMainWindow):
     def HighlightNakedPairs(self):
         """ Highlight where there are naked pair candidates """
         self.ClearHighlights()
-        pairSets, rCands = sd.NakedPairs(self.currBoard, self.cand_board)
+        pairSets, rCands = sd.NakedPairs(self.curr_board, self.cand_board)
 
         for pairSet in pairSets:
             a, b, i1, j1, i2, j2 = pairSet
@@ -484,7 +484,7 @@ class SudokuMainWindow(QMainWindow):
         """ Highlight where there are pointing pair candidates """
         self.ClearHighlights()
 
-        pair_sets, rCands = sd.PointingPairs(self.currBoard, self.cand_board)
+        pair_sets, rCands = sd.PointingPairs(self.curr_board, self.cand_board)
 
         for pairSet in pair_sets:
             n, i1, j1, i2, j2 = pairSet
@@ -496,7 +496,7 @@ class SudokuMainWindow(QMainWindow):
     def HighlightBoxLinePairs(self):
         """ Highlight where there are box-line pair candidates """
         self.ClearHighlights()
-        pair_sets, rCands = sd.BoxLinePairs(self.currBoard, self.cand_board)
+        pair_sets, rCands = sd.BoxLinePairs(self.curr_board, self.cand_board)
 
         for pairSet in pair_sets:
             n, i1, j1, i2, j2 = pairSet
@@ -508,7 +508,7 @@ class SudokuMainWindow(QMainWindow):
     def HighlightBoxTriples(self):
         """ Highlight where there are box triple candidates """
         self.ClearHighlights()
-        triples, rCands = sd.BoxTriples(self.currBoard, self.cand_board)
+        triples, rCands = sd.BoxTriples(self.curr_board, self.cand_board)
 
         for trip in triples:
             print(trip)
@@ -521,7 +521,7 @@ class SudokuMainWindow(QMainWindow):
 
     def HighlightXWings(self):
         self.ClearHighlights()
-        xwings, rCands = sd.XWings(self.currBoard, self.cand_board)
+        xwings, rCands = sd.XWings(self.curr_board, self.cand_board)
 
         for xwing in xwings:
             print(xwing)
@@ -538,7 +538,7 @@ class SudokuMainWindow(QMainWindow):
         valid (ie avoid duplicates). Resets any candidate changes based on other
         patterns like hidden singles etc. """
         self.ClearHighlights()
-        self.cand_board = sd.SolveCandidates(self.currBoard)
+        self.cand_board = sd.SolveCandidates(self.curr_board)
 
         for i in range(0, 9):
             for j in range(0, 9):
@@ -571,17 +571,17 @@ class SudokuMainWindow(QMainWindow):
             i, j = self.selected_cell.i, self.selected_cell.j
 
             # If number key pressed
-            if QtCore.Qt.Key_1 <= key <= QtCore.Qt.Key_9 and self.currBoard[i][j] != int(key_str):
+            if QtCore.Qt.Key_1 <= key <= QtCore.Qt.Key_9 and self.curr_board[i][j] != int(key_str):
                 self.selected_cell.UpdateValue(key_str)
-                self.currBoard[i][j] = int(key_str)
+                self.curr_board[i][j] = int(key_str)
             #                self.UpdatePossibleCandidates()
 
-            if key == QtCore.Qt.Key_Backspace and self.currBoard[i][j] != 0:
+            if key == QtCore.Qt.Key_Backspace and self.curr_board[i][j] != 0:
                 self.msgText.setText('Num Solutions: ?')
                 self.selected_cell.UpdateValue(' ')
-                self.currBoard[i][j] = 0
+                self.curr_board[i][j] = 0
 
-            dups = sd.FindDuplicates(self.currBoard)
+            dups = sd.FindDuplicates(self.curr_board)
             if not sd.CheckValid(dups):
                 print('Invalid', dups)
 
@@ -616,14 +616,14 @@ class SudokuMainWindow(QMainWindow):
 # Main App function - creates the app and window then passes control to the
 # app GUI.  Returns when app quits
 
-def run_app(origBoard):
+def run_app(orig_board):
     """ Main application function """
-    print('Board is valid:', sd.BoardIsValid(origBoard))
+    print('Board is valid:', sd.BoardIsValid(orig_board))
 
-    cand_board = sd.SolveCandidates(origBoard)
+    cand_board = sd.SolveCandidates(orig_board)
 
     app = QtWidgets.QApplication(sys.argv)
-    main_win = SudokuMainWindow(origBoard, cand_board)
+    main_win = SudokuMainWindow(orig_board, cand_board)
     main_win.show()
 
     return app.exec_()
