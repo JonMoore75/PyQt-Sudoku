@@ -30,7 +30,7 @@ environ["QT_AUTO_SCREEN_SCALE_FACTOR"] = "1"
 
 
 def Value2String(value):
-    return str(value) if value != 0 else ' '
+    return str(value) if (0 < value < 10) else ' '
 
 
 #####################
@@ -63,9 +63,9 @@ class Candidate(QLabel):
 class Cell(QLabel):
     selected = Signal(object, int) # Class to define the type of signals this can emit
 
-    def __init__(self, parent, str_value, cand_set, i, j):
-        super(QLabel, self).__init__(str_value, parent)
-        self.cellString = str_value
+    def __init__(self, parent, value, cand_set, i, j):
+        super(QLabel, self).__init__(Value2String(value), parent)
+        self.cellString = self.text()
         self.i = i
         self.j = j
 
@@ -77,7 +77,7 @@ class Cell(QLabel):
            Cell[invalid="true"] {color: red;}
             """)
         self.setProperty('selected', False)
-        if str_value == ' ':
+        if self.cellString == ' ':
             self.setProperty('edit', True)
         else:
             self.setProperty('edit', False)
@@ -98,7 +98,7 @@ class Cell(QLabel):
         """ Create grid of QLabel widgets to display the candidates """
         for i in range(0, 3):
             for j in range(0, 3):
-                cand_value = 3 * i + j + 1
+                cand_value = 3*i + j + 1
                 cand_str = str(cand_value) if cand_value in cand_set else ' '
                 cand_label = Candidate(cand_str, self)
                 self.gridLayoutBox.addWidget(cand_label, i, j)
@@ -118,8 +118,9 @@ class Cell(QLabel):
         self.style().unpolish(self)
         self.style().polish(self)
 
-    def UpdateValue(self, str_value):
+    def UpdateValue(self, value):
         """ Will fill in value in a cell if it is empty/unknown """
+        str_value = Value2String(value)
         if self.CanEdit():
             if str_value != ' ':
                 # Delete all candidate label widgets
@@ -138,7 +139,7 @@ class Cell(QLabel):
         if self.cellString == ' ':
             for i in range(0, 3):
                 for j in range(0, 3):
-                    cand_value = 3 * i + j + 1
+                    cand_value = 3*i + j + 1
                     cand_str = str(cand_value) if cand_value in cand_set else ' '
                     cand_widget = self.gridLayoutBox.itemAtPosition(i, j).widget()
                     cand_widget.setText(cand_str)
@@ -170,7 +171,7 @@ class Cell(QLabel):
         """ Toggles the candidate number if under the mouse """
         for i in range(0, 3):
             for j in range(0, 3):
-                cand_value = 3 * i + j + 1
+                cand_value = 3*i + j + 1
                 cand = self.gridLayoutBox.itemAtPosition(i, j).widget()
                 if cand.underMouse():
                     cand_str = str(cand_value) if cand.text() == ' ' else ' '
@@ -188,9 +189,12 @@ class Cell(QLabel):
 
         cand = 0
 
+        # Toggle candidates if no value in cell
         if self.property('selected') and self.cellString == ' ':
             cand = self.ToggleCandidateClicked()
-        else:  # Hightlight the cell in blue
+
+        # Hightlight the cell in blue to indicate this cell has keyboard focus
+        if not self.property('selected'):
             self.setProperty('selected', True)
             self.style().unpolish(self)
             self.style().polish(self)
@@ -230,7 +234,7 @@ class SudokuMainWindow(QMainWindow):
         self.cand_board = deepcopy(cand_board)
 
         # Variables (UI)
-        self.cells = self.CreateBoard(board, cand_board, self, board_layout)
+        self.cells = self.CreateBoard(self, board_layout)
         self.selected_cell = None
 
         # Create the msg text ui element to pass messages to user
@@ -274,20 +278,19 @@ class SudokuMainWindow(QMainWindow):
         layout.addWidget(box, bi, bj)
         return box
 
-    @staticmethod
-    def CreateCell(i, j, boxes, board, cand_board, click_func):
+    def CreateCell(self, i, j, boxes, click_func):
         bi, bj = i // 3, j // 3
         parent_box = boxes[bi][bj]
-        cell = Cell(parent_box, Value2String(board[i][j]), cand_board[i][j], i, j)
+        cell = Cell(parent_box, self.curr_board[i][j], self.cand_board[i][j], i, j)
         cell.ConnectCelltoWindow(click_func)
         parent_box.AddCell(cell, i - 3 * bi, j - 3 * bj)
         return cell
 
-    def CreateBoard(self, board, cand_board, parent, layout):
+    def CreateBoard(self, parent, layout):
         """ Creates board display with initial board values and candidates """
         # Create boxes for each 9x9 block
         boxes = [[self.CreateBox(parent, layout, bi, bj) for bj in range(3)] for bi in range(3)]
-        return [[self.CreateCell(i, j, boxes, board, cand_board, self.CellClicked) for j in range(9)] for i in range(9)]
+        return [[self.CreateCell(i, j, boxes, self.CellClicked) for j in range(9)] for i in range(9)]
 
     def CreateButtons(self, parent, layout):
         """ Create the buttons toolbar for solving options """
@@ -345,7 +348,7 @@ class SudokuMainWindow(QMainWindow):
         for i in range(0, 9):
             for j in range(0, 9):
                 if prevBoard[i][j] != self.curr_board[i][j]:
-                    self.cells[i][j].UpdateValue(Value2String(self.curr_board[i][j]))
+                    self.cells[i][j].UpdateValue(self.curr_board[i][j])
                     self.RemoveCandidatesBasedonCellValue(i, j, self.curr_board[i][j])
 
     def HighlightRemovals(self, rCands):
@@ -363,9 +366,7 @@ class SudokuMainWindow(QMainWindow):
 
         for i in range(0, 9):
             for j in range(0, 9):
-                if self.curr_board != 0:
-                    str_value = Value2String(self.curr_board[i][j])
-                    self.cells[i][j].UpdateValue(str_value)
+                self.cells[i][j].UpdateValue(self.curr_board[i][j])
 
         self.RegenerateCandidates()
 
@@ -572,7 +573,7 @@ class SudokuMainWindow(QMainWindow):
 
             # If number key pressed
             if QtCore.Qt.Key_1 <= key <= QtCore.Qt.Key_9 and self.curr_board[i][j] != int(key_str):
-                self.selected_cell.UpdateValue(key_str)
+                self.selected_cell.UpdateValue(int(key_str))
                 self.curr_board[i][j] = int(key_str)
             #                self.UpdatePossibleCandidates()
 
