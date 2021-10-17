@@ -1,9 +1,16 @@
 from copy import deepcopy
-
+from dataclasses import dataclass
 
 ###############################################################################
 # Sudoku Model - These functions deal with the board, its candidates and
 # solutions
+
+
+@dataclass
+class PatternInfo:
+    i: int
+    j: int
+    candidates: {int}
 
 
 def GetRowCells(board, i):
@@ -240,7 +247,7 @@ def SolvewBacktrack(board, initial=True):
                 changed = True
 
                 for value in values:
-                    i, j, n = value
+                    i, j, n = value.i, value.j, next(iter(value.candidates))
                     board[i][j] = n
                     cand_board = UpdateCandidates(n, i, j, cand_board)
 
@@ -289,7 +296,7 @@ def FindHiddenSingle(board, cand_board, UnitFunc, CoordFunc):
 
             if count == 1:
                 i, j = CoordFunc(u, idx)
-                values += [(i, j, n)]
+                values.append(PatternInfo(i, j, {n}))
 
     return values
 
@@ -333,13 +340,12 @@ def FindNakedPair(board, cand_board, UnitFunc, CoordFunc):
 
                 # If match previously found pair we have a Naked Pair
                 for p, pair in enumerate(pairs):
-                    i1, j1 = pair_loc[p][0], pair_loc[p][1]
+                    i1, j1 = pair_loc[p]
                     if (a, b) == pair:
-                        values += [(a, b, i1, j1, i, j)]
-
-                        # Mark candidates with value n in same row/col/block for removal
-                        removal_values += RemovalCandidates(cells, cands, a, lambda k: CoordFunc(u, k), [(i1, j1), (i, j)])
-                        removal_values += RemovalCandidates(cells, cands, b, lambda k: CoordFunc(u, k), [(i1, j1), (i, j)])
+                        values.append(PatternInfo(i, j, {a, b}))
+                        values.append(PatternInfo(i1, j1, {a, b}))
+                        removal_values += RemovalCandidates(cells, cands, {a, b},
+                                                                lambda k: CoordFunc(u, k), [(i1, j1), (i, j)])
 
                 # Remember this pair
                 pairs += [(a, b)]
@@ -391,7 +397,8 @@ def FindBoxLinePair(board, cand_board, UnitFunc, isRow):
                         i1, j1, i2, j2 = u, idx[0], u, idx[1]
                     else:
                         i1, j1, i2, j2 = idx[0], u, idx[1], u
-                    values += [(n, i1, j1, i2, j2)]
+                    values.append(PatternInfo(i1, j1, {n}))
+                    values.append(PatternInfo(i2, j2, {n}))
 
                     # Mark candidates with value n in same block for removal
                     b = GetBlockIDFromCellCoords(i1, j1)
@@ -400,7 +407,7 @@ def FindBoxLinePair(board, cand_board, UnitFunc, isRow):
 
                     def LocFunc(k):
                         return GetCellCoordsFromBlockID(b, k)
-                    removal_values += RemovalCandidates(rcells, rcands, n, LocFunc, [(i1, j1), (i2, j2)])
+                    removal_values += RemovalCandidates(rcells, rcands, {n}, LocFunc, [(i1, j1), (i2, j2)])
 
     return values, removal_values
 
@@ -441,7 +448,8 @@ def PointingPairs(board, cand_board):
                 i2, j2 = GetCellCoordsFromBlockID(b, idx[1])
 
                 if i1 == i2 or j1 == j2:
-                    values += [(n, i1, j1, i2, j2)]
+                    values.append(PatternInfo(i1, j1, {n}))
+                    values.append(PatternInfo(i2, j2, {n}))
 
                     # Mark candidates with value n in same row/col for removal
                     rcells = GetRowCells(board, i1) if i1 == i2 else GetColCells(board, j1)
@@ -449,7 +457,7 @@ def PointingPairs(board, cand_board):
 
                     def LocFunc(rc):
                         return (i1, rc) if i1 == i2 else (rc, j1)
-                    removal_values += RemovalCandidates(rcells, rcands, n, LocFunc, [(i1, j1), (i2, j2)])
+                    removal_values += RemovalCandidates(rcells, rcands, {n}, LocFunc, [(i1, j1), (i2, j2)])
 
     return values, removal_values
 
@@ -467,34 +475,29 @@ def FindBoxTriples(board, cand_board, UnitFunc, CoordFunc):
 
         # Loop thro each set of 3 cells in each block in this row/col
         for b in range(0, 3):
-            tripCandSet = set()
-            bs = 3*b
-            bf = bs + 3
+            cs = 3 * b
 
             # If no cells filled in for this row/col in this block
-            if cells[bs:bf] == [0, 0, 0]:
-                for c in range(0, 3):               # Must be loop as cands is list of sets and
-                    tripCandSet |= cands[bs + c]    # adds the candidates to the set via union operator
+            if cells[cs:cs + 3] == [0, 0, 0]:
+                tripCandSet = set().union(*cands[cs:cs + 3])  # Add these cells candidates to set using union operator
 
                 # If only 3 possible candidates in these 3 cells
                 if len(tripCandSet) == 3:
-                    trip_loc = [CoordFunc(u, bs + k) for k in range(0, 3)]
                     x, y, z = tripCandSet
-                    values += [tuple(tripCandSet) + tuple(trip_loc)]
+                    trip_loc = [CoordFunc(u, cs + k) for k in range(0, 3)]
+                    for k in range(0, 3):
+                        values.append(PatternInfo(*trip_loc[k], tripCandSet & cands[cs + k]))
 
                     # Mark candidates with value n in same row/col for removal
                     rcells = UnitFunc(board, u)
-                    removal_values += RemovalCandidates(rcells, cands, x, lambda k: CoordFunc(u, k), trip_loc)
-                    removal_values += RemovalCandidates(rcells, cands, y, lambda k: CoordFunc(u, k), trip_loc)
-                    removal_values += RemovalCandidates(rcells, cands, z, lambda k: CoordFunc(u, k), trip_loc)
+                    removal_values += RemovalCandidates(rcells, cands, {x, y, z}, lambda k: CoordFunc(u, k), trip_loc)
 
                     # Mark candidates with value n in same block for removal
-                    b = GetBlockIDFromCellCoords(trip_loc[0][0], trip_loc[0][1])
-                    rbcells = GetBlockCells_BlockID(board, b)
-                    rbcands = GetBlockCells_BlockID(cand_board, b)
-                    removal_values += RemovalCandidates(rbcells, rbcands, x, lambda k: GetCellCoordsFromBlockID(b, k), trip_loc)
-                    removal_values += RemovalCandidates(rbcells, rbcands, y, lambda k: GetCellCoordsFromBlockID(b, k), trip_loc)
-                    removal_values += RemovalCandidates(rbcells, rbcands, z, lambda k: GetCellCoordsFromBlockID(b, k), trip_loc)
+                    bl = GetBlockIDFromCellCoords(*CoordFunc(u, cs))
+                    rbcells = GetBlockCells_BlockID(board, bl)
+                    rbcands = GetBlockCells_BlockID(cand_board, bl)
+                    removal_values += RemovalCandidates(rbcells, rbcands, {x, y, z},
+                                                        lambda k: GetCellCoordsFromBlockID(bl, k), trip_loc)
 
     return values, removal_values
 
@@ -528,14 +531,18 @@ def FindXWing(board, cand_board, UnitFunc, CoordFunc):
             for c in range(0, 9):
                 if cells[c] == 0 and n in cands[c]:
                     count += 1
-                    idx += [c]
+                    idx.append(c)
 
+            # If just two places for n in this row/col, idx now a list of two location values
+            # see if matching pair from another row/col to form a square pattern
             if count == 2:
                 for pair in pair_loc:
-                    ep, idxp = pair
+                    u_p, idxp = pair
                     if idxp == idx:
-                        values += [(n, CoordFunc(u, idx[0]), CoordFunc(u, idx[1]), CoordFunc(ep, idxp[0]),
-                                    CoordFunc(ep, idxp[1]))]
+                        values.append(PatternInfo(*CoordFunc(u, idx[0]), {n}))
+                        values.append(PatternInfo(*CoordFunc(u, idx[1]), {n}))
+                        values.append(PatternInfo(*CoordFunc(u_p, idxp[0]), {n}))
+                        values.append(PatternInfo(*CoordFunc(u_p, idxp[1]), {n}))
                 pair_loc += [(u, idx)]
 
     return values
@@ -544,10 +551,12 @@ def FindXWing(board, cand_board, UnitFunc, CoordFunc):
 def XWingRemovals(board, cand_board, xwings):
     removal_values = []
     for xwing in xwings:
-        n, (i1, j1), (i2, j2), (i3, j3), (i4, j4) = xwing
+        assert (len(xwing) == 4)
+        xw1, xw2, xw3, xw4 = xwing
+        n = next(iter(xw1.candidates))
 
-        rows = list({i1, i2, i3, i4})
-        cols = list({j1, j2, j3, j4})
+        rows = list({xw1.i, xw2.i, xw3.i, xw4.i})
+        cols = list({xw1.j, xw2.j, xw3.j, xw4.j})
 
         for row in rows:
             row_cells = GetRowCells(board, row)
@@ -555,7 +564,7 @@ def XWingRemovals(board, cand_board, xwings):
 
             for col in range(0, 9):
                 if col not in cols and row_cells[col] == 0 and n in row_cands[col]:
-                    removal_values += [(n, row, col)]
+                    removal_values.append(PatternInfo(row, col, {n}))
 
         for col in cols:
             col_cells = GetColCells(board, col)
@@ -563,7 +572,7 @@ def XWingRemovals(board, cand_board, xwings):
 
             for row in range(0, 9):
                 if row not in rows and col_cells[row] == 0 and n in col_cands[row]:
-                    removal_values += [(n, row, col)]
+                    removal_values.append(PatternInfo(row, col, {n}))
 
     return removal_values
 
@@ -576,31 +585,36 @@ def XWings(board, cand_board):
 
     values = row_values + col_values
 
-    removal_values = XWingRemovals(board, cand_board, values)
+    assert(len(values) % 4 == 0)
+    xwings = [values[x:x+4] for x in range(0, len(values), 4)]
+    removal_values = XWingRemovals(board, cand_board, xwings)
 
     return values, removal_values
 
 
-def RemovalCandidates(unit_cells, candidates, n, LocFunc, exclusion_list):
+def RemovalCandidates(unit_cells, candidates, values, LocFunc, exclusion_list):
     """ Marks all candidates with value n for removal if not in exclusion list.
     cells           - list of ints containing the values in the cells in the given unit (row, col, block)
     candidates      - list of sets of ints representing candidates for each cell
     LocFunc         - function that translates the 0->9 index to i,j cell coords
-    n               - number (int) to be removed
+    values          - set of int values to be removed from this cells candidates
     exclusion_list  - list of cells coords excluded from removal.
 
-    The exclusion list is for the cells that cause the removal (ie orig pointing
+    The exclusion list is for the cells that cause the removal (ie original pointing
     pair or similar) to avoid candidates causing their own removal.
     """
     removal_values = []
 
     assert(len(unit_cells) == 9)
+    assert(type(values) is set)
 
-    # Loop through each cell of the block
+    # Loop through each cell of the unit
     for i, cell in enumerate(unit_cells):
         ri, rj = LocFunc(i)
 
-        if cell == 0 and n in candidates[i] and (ri, rj) not in exclusion_list:
-            removal_values += [(n, ri, rj)]
+        values_in_cell = values & candidates[i]
+
+        if cell == 0 and (ri, rj) not in exclusion_list and len(values_in_cell) > 0:
+            removal_values.append(PatternInfo(ri, rj, values_in_cell))
 
     return removal_values

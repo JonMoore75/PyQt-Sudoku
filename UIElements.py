@@ -34,7 +34,7 @@ class Candidate(QLabel):
 
 class Cell(QLabel):
     # selected is a class to define the type of signals Cell can emit on mouse click
-    selected = Signal(object, int)
+    selected = Signal(object)#, int)
 
     def __init__(self, parent, i, j, value=0):
         super(QLabel, self).__init__(Value2String(value), parent)
@@ -49,7 +49,7 @@ class Cell(QLabel):
            Cell[invalid="true"] {color: red;}
             """)
         self.setProperty('selected', False)
-        self.SetEditStatus(value)
+        self.SetEditStatus(value == 0)
 
         self.setAlignment(QtCore.Qt.AlignCenter)
         self.setFont(QFont("Arial", 45, QFont.Bold))
@@ -88,21 +88,18 @@ class Cell(QLabel):
         """ Will fill in value in a cell if it is empty/unknown """
         str_value = Value2String(value)
         if initial:
-            self.SetEditStatus(str_value)
+            self.SetEditStatus(value == 0)
 
         if self.CanEdit() or initial:
-            if str_value != ' ':
+            if value != 0:
                 self.DeleteAllCandidates()
-            else:
+            elif self.gridLayoutBox.count() == 0:
                 self.CreateCandidates()
 
             self.setText(str_value)
 
-    def SetEditStatus(self, str_value):
-        if str_value == ' ':
-            self.setProperty('edit', True)
-        else:
-            self.setProperty('edit', False)
+    def SetEditStatus(self, status):
+        self.setProperty('edit', status)
         self.style().unpolish(self)
         self.style().polish(self)
 
@@ -144,30 +141,29 @@ class Cell(QLabel):
             cand_widget = self.gridLayoutBox.itemAtPosition(i, j).widget()
             cand_widget.setText(' ')
 
-    def ToggleCandidateClicked(self):
-        """ Toggles the candidate number if under the mouse """
+    def AddCandidate(self, value):
+        """ Adds candidate value from empty/unknown cell """
         if self.text() == ' ':
-            for cand_value in range(1, 10):
-                i, j = self.CandCoordFromValue(cand_value)
-                cand_widget = self.gridLayoutBox.itemAtPosition(i, j).widget()
-                if cand_widget.underMouse():
-                    cand_str = str(cand_value) if cand_widget.text() == ' ' else ' '
-                    cand_widget.setText(cand_str)
-                    return cand_value
+            i, j = self.CandCoordFromValue(value)
+            cand_widget = self.gridLayoutBox.itemAtPosition(i, j).widget()
+            cand_widget.setText(Value2String(value))
+
+    def FindCandidateClicked(self):
+        """ If mouse clocked on cell see if click is on a candidate"""
+
+        for cand_value in range(1, 10):
+            i, j = self.CandCoordFromValue(cand_value)
+            cand_widget = self.gridLayoutBox.itemAtPosition(i, j).widget()
+            if cand_widget.underMouse():
+                return cand_value
 
         return 0
 
     def mouseReleaseEvent(self, QMouseEvent):
         """ Handle cell being clicked on.  Will find if a candidate has been clicked, if so cand set the number (1-9)
-         of the candidate clciked.  If no valid candidate cand=0.
+         of the candidate clicked.  If no valid candidate cand=0.
          This cell object and cand then emitted as a signal to connected slots (The main window class)
          """
-
-        cand = 0
-
-        # Toggle candidates if no value in cell
-        if self.property('selected'):
-            cand = self.ToggleCandidateClicked()
 
         # Hightlight the cell in blue to indicate this cell has keyboard focus
         if not self.property('selected'):
@@ -175,7 +171,7 @@ class Cell(QLabel):
             self.style().unpolish(self)
             self.style().polish(self)
 
-        self.selected.emit(self, cand)
+        self.selected.emit(self)#, cand)
 
     def Deselect(self):
         """ If cell selected, deselect it """

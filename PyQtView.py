@@ -1,9 +1,6 @@
 from PyQt5 import QtCore
 from PyQt5.QtWidgets import QMainWindow, QLabel, QGridLayout, QVBoxLayout, QWidget, QPushButton
-from PyQt5.QtCore import pyqtSignal, pyqtSlot
-
 from UIElements import Cell, Block
-
 from enum import Enum, auto
 
 
@@ -12,11 +9,40 @@ class Cmds(Enum):
     DEL = auto()
     MOUSE = auto()
     CELLCLICK = auto()
+    RESTART = auto()
+    SOLVE = auto()
+    FILLSINGLE = auto()
+    UPDATE = auto()
+    HIDSINGLE = auto()
+    NAKEDPAIR = auto()
+    POINTPAIR = auto()
+    BOXLINE = auto()
+    BOXTRIPLE = auto()
+    XWING = auto()
+    REGEN = auto()
+    CLEAR = auto()
+
+
+def GenButtonMap():
+    return {Cmds.RESTART: 'Restart',
+              Cmds.SOLVE: 'Solve',
+              Cmds.FILLSINGLE: 'Fill Single Candidates',
+              Cmds.UPDATE: 'Update Candidates',
+              Cmds.HIDSINGLE: 'Highlight Hidden Singles',
+              Cmds.NAKEDPAIR: 'Highlight Naked Pairs',
+              Cmds.POINTPAIR: 'Highlight Pointing Pairs',
+              Cmds.BOXLINE: 'Highlight Box-Line Pairs',
+              Cmds.BOXTRIPLE: 'Highlight Box Triples',
+              Cmds.XWING: 'X-Wings',
+              Cmds.REGEN: 'Re-generate Candidates',
+              Cmds.CLEAR: 'Clear Highlights'}
 
 
 class PyQtSudokuView(QMainWindow):
-    def __init__(self, button_map):
+    def __init__(self):
         super(QMainWindow, self).__init__()
+
+        button_map = GenButtonMap()
 
         # Maps to map commands, keys and functions
         self.key_table = {k: Cmds.NUM for k in range(QtCore.Qt.Key_0, QtCore.Qt.Key_9+1)}
@@ -28,25 +54,15 @@ class PyQtSudokuView(QMainWindow):
         # Variables (UI)
         self.cells = self.CreateBoard(self, board_layout)
 
-        # Create the msg text ui element to pass messages to user
+        # Create the msg text UI element to pass messages to user
         self.msgText = QLabel('Num Solutions: ?')
         self.msgText.setStyleSheet("border: 1px solid black;")
         side_ui_layout.addWidget(self.msgText)
 
-        self.CreateButtons(self, side_ui_layout)
-
-        # Create UI elements
-        self.buttons = {}
+        # Create UI button elements
         for cmd in button_map:
             title = button_map[cmd]
-            self.buttons[cmd] = QPushButton(title)
-            side_ui_layout.addWidget(self.buttons[cmd])
-
-            # Need to use this form of lambda to get local copy of button variable
-            # otherwise button will be last value in the list for ALL buttons
-            # lambda's (or local functions) use value at call time NOT creation!
-            # See https://stackoverflow.com/questions/10452770/python-lambdas-binding-to-local-values
-            self.buttons[cmd].clicked.connect(lambda state, x=cmd: self.ExecuteCmd(x))
+            self.AddButton(side_ui_layout, title, lambda state, x=cmd: self.ExecuteCmd(x))
 
     def SetupWindow(self):
         """ Setup Window - calls to QMainWindow methods (not overridden) """
@@ -69,6 +85,13 @@ class PyQtSudokuView(QMainWindow):
         outer_layout.addLayout(side_ui_layout, 2, 9, 4, 3)
 
         return board_layout, side_ui_layout
+
+    @staticmethod
+    def AddButton(layout, title, func):
+        button = QPushButton(title)
+        button.clicked.connect(func)
+        layout.addWidget(button)
+        return button
 
     @staticmethod
     def CreateBlock(parent, layout, bi, bj):
@@ -105,6 +128,9 @@ class PyQtSudokuView(QMainWindow):
         """ Allows other class (eg model or controller etc) to specify what function to call for each command """
         self.func_map = func_map
 
+    ####################################################################################################################
+    # Event handling - pass onto controller
+
     def keyPressEvent(self, event):
         """ Handles key presses."""
         key = event.key()
@@ -124,7 +150,7 @@ class PyQtSudokuView(QMainWindow):
 
         self.ExecuteCmd(Cmds.MOUSE)
 
-    def CellClicked(self, cell, cand):
+    def CellClicked(self, cell):#, cand):
         """ Handler function for a cell being clicked.  Pass onto Controller to handle """
 
         self.ExecuteCmd(Cmds.CELLCLICK, cell)
@@ -158,7 +184,14 @@ class PyQtSudokuView(QMainWindow):
             for j in range(0, 9):
                 self.cells[i][j].UpdateCandidates(cand_board[i][j])
 
+    def UpdateChangedCells(self, changed_cell_data):
+        """ Update only changed cells """
+        for cell_info in changed_cell_data:
+            i, j, n = cell_info
+            self.cells[i][j].UpdateValue(n)
+
     ####################################################################################################################
+    # Update the sudoku board display
 
     def ClearHighlights(self):
         """ Remove all highlight from candidates """
@@ -166,21 +199,21 @@ class PyQtSudokuView(QMainWindow):
             for j in range(0, 9):
                 self.cells[i][j].ClearHilites()
 
-    def HighlightRemovals(self, candidates, cells):
+    def HighlightRemovals(self, highlight_list):
         """ Highlight candidates that can be removed based on list rCands """
-        for cell_coords in cells:
-            i, j = cell_coords
-            self.cells[i][j].HiliteCandidates(candidates, colour='red')
+        for highlight_info in highlight_list:
+            i, j = highlight_info.i,  highlight_info.j
+            self.cells[i][j].HiliteCandidates(highlight_info.candidates, colour='red')
 
-    def HighlightValues(self, candidates, cells):
+    def HighlightValues(self, highlight_list):
         """ Highlight candidates """
-        for cell_coords in cells:
-            i, j = cell_coords
-            self.cells[i][j].HiliteCandidates(candidates)
+        for highlight_info in highlight_list:
+            i, j = highlight_info.i,  highlight_info.j
+            self.cells[i][j].HiliteCandidates(highlight_info.candidates)
 
     ####################################################################################################################
 
-    def SetNumSolutions(self, num_solns):
+    def SetNumSolutions(self, num_solns=None):
         """ Sets the message area text """
         if num_solns == 1 or num_solns is None:
             self.msgText.setStyleSheet("border: 1px solid black; color: black;")
