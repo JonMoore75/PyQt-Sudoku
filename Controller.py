@@ -1,5 +1,32 @@
 from PyQtView import Cmds
+from PyQt5.QtWidgets import QDialog, QDialogButtonBox, QLabel, QVBoxLayout, QLineEdit
 import Sudoku as sd
+import re
+from SudokuModel import SudokuModel
+
+class CustomDialog(QDialog):
+    def __init__(self):
+        super().__init__()
+
+        self.setWindowTitle("Enter New Sudoku")
+
+        QBtn = QDialogButtonBox.Ok | QDialogButtonBox.Cancel
+
+        self.buttonBox = QDialogButtonBox(QBtn)
+        self.buttonBox.accepted.connect(self.accept)
+        self.buttonBox.rejected.connect(self.reject)
+
+        message = QLabel("Enter a string of 81 numbers (you can express blanks as 0, *, _ or '.')")
+        self.edit = QLineEdit()
+
+        self.layout = QVBoxLayout()
+        self.layout.addWidget(message)
+        self.layout.addWidget(self.edit)
+        self.layout.addWidget(self.buttonBox)
+        self.setLayout(self.layout)
+
+    def GetString(self):
+        return self.edit.text()
 
 
 class Controller:
@@ -8,6 +35,7 @@ class Controller:
                     Cmds.DEL: self.CellValueDeleted,
                     Cmds.MOUSE: self.MouseClick,
                     Cmds.CELLCLICK: self.CellClicked,
+                    Cmds.IMPORT: self.ImportBoard,
                     Cmds.RESTART: self.ResetBoard,
                     Cmds.SOLVE: self.Solve,
                     Cmds.FILLSINGLE: self.FillinSingleCandidatesStep,
@@ -92,6 +120,29 @@ class Controller:
             self.view.SetNumSolutions(None)
 
     ####################################################################################################################
+
+    def ImportBoard(self):
+        """ Import a string representing a sudoku board """
+        dlg = CustomDialog()
+        if not dlg.exec():
+            return
+
+        strBoard = dlg.GetString()
+        reg = re.compile('^[0-9.*_]*$')
+
+        if len(strBoard) != 81 or not reg.match(strBoard):
+            print('Invalid board entered')
+            return
+
+        strBoard = strBoard.replace('.', '0')
+        strBoard = strBoard.replace('_', '0')
+        strBoard = strBoard.replace('*', '0')
+
+        board = [int(s) for s in strBoard]
+        board = [board[i:i+9] for i in range(0, 81, 9)]
+
+        self.model = SudokuModel(board)
+        self.ResetBoard()
 
     def ResetBoard(self):
         self.model.ResetBoard()

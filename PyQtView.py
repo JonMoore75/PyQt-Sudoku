@@ -1,5 +1,5 @@
 from PyQt5 import QtCore
-from PyQt5.QtWidgets import QMainWindow, QLabel, QGridLayout, QVBoxLayout, QWidget, QPushButton
+from PyQt5.QtWidgets import QMainWindow, QLabel, QGridLayout, QVBoxLayout, QWidget, QPushButton, QComboBox
 from UIElements import Cell, Block
 from enum import Enum, auto
 
@@ -9,6 +9,7 @@ class Cmds(Enum):
     DEL = auto()
     MOUSE = auto()
     CELLCLICK = auto()
+    IMPORT = auto()
     RESTART = auto()
     SOLVE = auto()
     FILLSINGLE = auto()
@@ -24,7 +25,8 @@ class Cmds(Enum):
 
 
 def GenButtonMap():
-    return {Cmds.RESTART: 'Restart',
+    return {Cmds.IMPORT: 'Import Board',
+              Cmds.RESTART: 'Restart',
               Cmds.SOLVE: 'Solve',
               Cmds.FILLSINGLE: 'Fill Single Candidates',
               Cmds.UPDATE: 'Update Candidates',
@@ -33,7 +35,7 @@ def GenButtonMap():
               Cmds.POINTPAIR: 'Highlight Pointing Pairs',
               Cmds.BOXLINE: 'Highlight Box-Line Pairs',
               Cmds.BOXTRIPLE: 'Highlight Box Triples',
-              Cmds.XWING: 'X-Wings',
+              Cmds.XWING: 'Highlight X-Wings',
               Cmds.REGEN: 'Re-generate Candidates',
               Cmds.CLEAR: 'Clear Highlights'}
 
