@@ -1,8 +1,12 @@
 from PyQtView import Cmds
 from PyQt5.QtWidgets import QDialog, QDialogButtonBox, QLabel, QVBoxLayout, QLineEdit
-import Sudoku as sd
+
 import re
+
+import sudoku as sd
+import sudoku_pattern as sdp
 from SudokuModel import SudokuModel
+
 
 class CustomDialog(QDialog):
     def __init__(self):
@@ -10,9 +14,9 @@ class CustomDialog(QDialog):
 
         self.setWindowTitle("Enter New Sudoku")
 
-        QBtn = QDialogButtonBox.Ok | QDialogButtonBox.Cancel
+        q_btn = QDialogButtonBox.Ok | QDialogButtonBox.Cancel
 
-        self.buttonBox = QDialogButtonBox(QBtn)
+        self.buttonBox = QDialogButtonBox(q_btn)
         self.buttonBox.accepted.connect(self.accept)
         self.buttonBox.rejected.connect(self.reject)
 
@@ -127,18 +131,18 @@ class Controller:
         if not dlg.exec():
             return
 
-        strBoard = dlg.GetString()
+        str_board = dlg.GetString()
         reg = re.compile('^[0-9.*_]*$')
 
-        if len(strBoard) != 81 or not reg.match(strBoard):
+        if len(str_board) != 81 or not reg.match(str_board):
             print('Invalid board entered')
             return
 
-        strBoard = strBoard.replace('.', '0')
-        strBoard = strBoard.replace('_', '0')
-        strBoard = strBoard.replace('*', '0')
+        str_board = str_board.replace('.', '0')
+        str_board = str_board.replace('_', '0')
+        str_board = str_board.replace('*', '0')
 
-        board = [int(s) for s in strBoard]
+        board = [int(s) for s in str_board]
         board = [board[i:i+9] for i in range(0, 81, 9)]
 
         self.model = SudokuModel(board)
@@ -182,41 +186,41 @@ class Controller:
     def HighlightHiddenSingles(self):
         """ Highlight where there are hidden single candidates """
         self.ClearHighlights()
-        hidden_singles = sd.HiddenSingles(self.model.GetBoard(), self.model.GetAllCands())
+        hidden_singles = sdp.HiddenSingles(self.model.GetBoard(), self.model.GetAllCands())
         self.view.HighlightValues(hidden_singles)
 
     def HighlightNakedPairs(self):
         """ Highlight where there are naked pair candidates """
         self.ClearHighlights()
-        values, removals = sd.NakedPairs(self.model.GetBoard(), self.model.GetAllCands())
+        values, removals = sdp.NakedPairs(self.model.GetBoard(), self.model.GetAllCands())
 
         self.view.HighlightValues(values)
         self.view.HighlightRemovals(removals)
 
     def HighlightPointingPairs(self):
         self.ClearHighlights()
-        values, removals = sd.PointingPairs(self.model.GetBoard(), self.model.GetAllCands())
+        values, removals = sdp.PointingPairs(self.model.GetBoard(), self.model.GetAllCands())
 
         self.view.HighlightValues(values)
         self.view.HighlightRemovals(removals)
 
     def HighlightBoxLinePairs(self):
         self.ClearHighlights()
-        values, removals = sd.BoxLinePairs(self.model.GetBoard(), self.model.GetAllCands())
+        values, removals = sdp.BoxLinePairs(self.model.GetBoard(), self.model.GetAllCands())
 
         self.view.HighlightValues(values)
         self.view.HighlightRemovals(removals)
 
     def HighlightBoxTriples(self):
         self.ClearHighlights()
-        values, removals = sd.BoxTriples(self.model.GetBoard(), self.model.GetAllCands())
+        values, removals = sdp.BoxTriples(self.model.GetBoard(), self.model.GetAllCands())
 
         self.view.HighlightValues(values)
         self.view.HighlightRemovals(removals)
 
     def HighlightXWings(self):
         self.ClearHighlights()
-        values, removals = sd.XWings(self.model.GetBoard(), self.model.GetAllCands())
+        values, removals = sdp.XWings(self.model.GetBoard(), self.model.GetAllCands())
 
         self.view.HighlightValues(values)
         self.view.HighlightRemovals(removals)
@@ -232,4 +236,3 @@ class Controller:
     def ClearHighlights(self):
         """ Remove all highlight from candidates """
         self.view.ClearHighlights()
-

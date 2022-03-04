@@ -1,5 +1,5 @@
 from copy import deepcopy
-import Sudoku as sd
+import sudoku as sd
 
 
 class SudokuModel:

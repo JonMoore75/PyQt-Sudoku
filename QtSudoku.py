@@ -2,7 +2,7 @@ import sys
 from os import environ
 from PyQt5 import QtCore, QtWidgets
 
-import Sudoku as sd
+import sudoku as sd
 
 from Controller import Controller
 from SudokuModel import SudokuModel
@@ -190,4 +190,3 @@ if __name__ == "__main__":
         [0, 9, 7, 0, 0, 0, 0, 0, 0],
     ]
     sys.exit(run_app(xwingboard))
-# 000200000005006800010003060006005410000910000020060008250004070403100200097000000
