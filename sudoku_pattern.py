@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from sudoku_coords import GetRowCells, GetColCells, GetBlockCells_BlockID, GetCellCoordsFromBlockID, \
-                            GetBlockIDFromCellCoords
+                            GetBlockIDFromCellCoords, GetCellCoordsFromColID, GetCellCoordsFromRowID
 
 ###############################################################################
 
@@ -24,15 +24,10 @@ def FindHiddenSingle(board, cand_board, unit_func, coord_func):
 
         # Loop through all possible numbers
         for n in range(1, 10):
-            count = 0
-            idx = None
-            for c in range(0, 9):
-                if cells[c] == 0 and n in candsInUnit[c]:
-                    count += 1
-                    idx = c
+            idx = [c for c in range(0, 9) if cells[c] == 0 and n in candsInUnit[c]]
 
-            if count == 1:
-                i, j = coord_func(u, idx)
+            if len(idx) == 1:
+                i, j = coord_func(u, idx[0])
                 values.append(PatternInfo(i, j, {n}))
 
     return values
@@ -43,9 +38,9 @@ def HiddenSingles(board, cand_board):
     it can go in on a row, column or block """
 
     # Rows
-    values = FindHiddenSingle(board, cand_board, GetRowCells, lambda b, k: (b, k))
+    values = FindHiddenSingle(board, cand_board, GetRowCells, GetCellCoordsFromRowID)
     # Columns
-    values += FindHiddenSingle(board, cand_board, GetColCells, lambda b, k: (k, b))
+    values += FindHiddenSingle(board, cand_board, GetColCells, GetCellCoordsFromColID)
     # Block
     values += FindHiddenSingle(board, cand_board, GetBlockCells_BlockID, GetCellCoordsFromBlockID)
 
@@ -93,10 +88,10 @@ def FindNakedPair(board, cand_board, unit_func, coord_func):
 
 def NakedPairs(board, cand_board):
     # Rows
-    values_row, removal_values_row = FindNakedPair(board, cand_board, GetRowCells, lambda b, k: (b, k))
+    values_row, removal_values_row = FindNakedPair(board, cand_board, GetRowCells, GetCellCoordsFromRowID)
 
     # Columns
-    values_col, removal_values_col = FindNakedPair(board, cand_board, GetColCells, lambda b, k: (k, b))
+    values_col, removal_values_col = FindNakedPair(board, cand_board, GetColCells, GetCellCoordsFromColID)
 
     # Blocks
     values_block, removal_values_block = FindNakedPair(board, cand_board, GetBlockCells_BlockID, GetCellCoordsFromBlockID)
@@ -118,33 +113,26 @@ def FindBoxLinePair(board, cand_board, unit_func, isRow):
 
         # Loop through all possible numbers
         for n in range(1, 10):
-            count = 0
-            idx = []
+            # Find location of all candidates of value n
+            idx = [c for c in range(0, 9) if cells[c] == 0 and n in candsInUnit[c]]
 
-            # Loop through each cell of the unit
-            for c in range(0, 9):
-                if cells[c] == 0 and n in candsInUnit[c]:
-                    count += 1
-                    idx += [c]
+            # If only found number n twice in col or row and both in same block
+            if len(idx) == 2 and idx[0] // 3 == idx[1] // 3:
+                if isRow:
+                    i1, j1, i2, j2 = u, idx[0], u, idx[1]
+                else:
+                    i1, j1, i2, j2 = idx[0], u, idx[1], u
+                values.append(PatternInfo(i1, j1, {n}))
+                values.append(PatternInfo(i2, j2, {n}))
 
-            # If only found number n twice in col or row, check if in same block
-            if count == 2:
-                if idx[0] // 3 == idx[1] // 3:
-                    if isRow:
-                        i1, j1, i2, j2 = u, idx[0], u, idx[1]
-                    else:
-                        i1, j1, i2, j2 = idx[0], u, idx[1], u
-                    values.append(PatternInfo(i1, j1, {n}))
-                    values.append(PatternInfo(i2, j2, {n}))
+                # Mark candidates with value n in same block for removal
+                b = GetBlockIDFromCellCoords(i1, j1)
+                rcells = GetBlockCells_BlockID(board, b)
+                rcands = GetBlockCells_BlockID(cand_board, b)
 
-                    # Mark candidates with value n in same block for removal
-                    b = GetBlockIDFromCellCoords(i1, j1)
-                    rcells = GetBlockCells_BlockID(board, b)
-                    rcands = GetBlockCells_BlockID(cand_board, b)
-
-                    def LocFunc(k):
-                        return GetCellCoordsFromBlockID(b, k)
-                    removal_values += RemovalCandidates(rcells, rcands, {n}, LocFunc, [(i1, j1), (i2, j2)])
+                def LocFunc(k):
+                    return GetCellCoordsFromBlockID(b, k)
+                removal_values += RemovalCandidates(rcells, rcands, {n}, LocFunc, [(i1, j1), (i2, j2)])
 
     return values, removal_values
 
@@ -170,17 +158,10 @@ def PointingPairs(board, cand_board):
 
         # Loop through all possible numbers
         for n in range(1, 10):
-            count = 0
-            idx = []
-
-            # Loop through each cell of the block
-            for c in range(0, 9):
-                if cellsInBlock[c] == 0 and n in candsInBlock[c]:
-                    count += 1
-                    idx += [c]
+            idx = [c for c in range(0, 9) if cellsInBlock[c] == 0 and n in candsInBlock[c]]
 
             # If only found number n twice in col or row, check if in same row/col
-            if count == 2:
+            if len(idx) == 2:
                 i1, j1 = GetCellCoordsFromBlockID(b, idx[0])
                 i2, j2 = GetCellCoordsFromBlockID(b, idx[1])
 
@@ -241,9 +222,9 @@ def FindBoxTriples(board, cand_board, unit_func, coord_func):
 
 def BoxTriples(board, cand_board):
     # Rows
-    values_row, removal_values_row = FindBoxTriples(board, cand_board, GetRowCells, lambda u, k: (u, k))
+    values_row, removal_values_row = FindBoxTriples(board, cand_board, GetRowCells, GetCellCoordsFromRowID)
     # Columns
-    values_col, removal_values_col = FindBoxTriples(board, cand_board, GetColCells, lambda u, k: (k, u))
+    values_col, removal_values_col = FindBoxTriples(board, cand_board, GetColCells, GetCellCoordsFromColID)
 
     return values_row + values_col, removal_values_row + removal_values_col
 
@@ -261,18 +242,11 @@ def FindXWing(board, cand_board, unit_func, coord_func):
             cells = unit_func(board, u)  # Cells in this row or column only
             cands = unit_func(cand_board, u)  # Cands in this row or column only
 
-            count = 0
-            idx = []
-
-            # Loop through each cell of the unit
-            for c in range(0, 9):
-                if cells[c] == 0 and n in cands[c]:
-                    count += 1
-                    idx.append(c)
+            idx = [c for c in range(0, 9) if cells[c] == 0 and n in cands[c]]
 
             # If just two places for n in this row/col, idx now a list of two location values
             # see if matching pair from another row/col to form a square pattern
-            if count == 2:
+            if len(idx) == 2:
                 for pair in pair_loc:
                     u_p, idxp = pair
                     if idxp == idx:
@@ -316,9 +290,9 @@ def XWingRemovals(board, cand_board, xwings):
 
 def XWings(board, cand_board):
     # Rows
-    row_values = FindXWing(board, cand_board, GetRowCells, lambda b, k: (b, k))
+    row_values = FindXWing(board, cand_board, GetRowCells, GetCellCoordsFromRowID)
     # Columns
-    col_values = FindXWing(board, cand_board, GetColCells, lambda b, k: (k, b))
+    col_values = FindXWing(board, cand_board, GetColCells, GetCellCoordsFromColID)
 
     values = row_values + col_values
 

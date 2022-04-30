@@ -17,6 +17,14 @@ def GetBlockCoordsFromBlockID(b):
     return b // 3, b % 3
 
 
+def GetCellCoordsFromRowID(r, k):
+    return r, k
+
+
+def GetCellCoordsFromColID(c, k):
+    return k, c
+
+
 def GetCellCoordsFromBlockID(b, k):
     """ Find the board coords from for a particular cell in a 3x3 block.
         b - is the ID of the 3x3 block
