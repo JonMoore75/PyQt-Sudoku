@@ -116,6 +116,7 @@ class Controller:
     ####################################################################################################################
 
     def ShowInvalidCells(self):
+        """ Displays if the solution is no longer valid, due to duplicate numbers """
         dups = sd.FindDuplicates(self.model.GetBoard())
         self.view.ShowInvalidCells(dups)
         if not sd.CheckValid(dups):

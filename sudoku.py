@@ -62,7 +62,7 @@ def RemoveZeros(input_list):
     return list(filter(lambda a: a != 0, input_list))
 
 
-def GetCellCandidateList(board, i, j):
+def GetCellCandidateSet(board, i, j):
     """ Find possible values in a cell """
 
     if board[i][j] == 0:
@@ -79,7 +79,7 @@ def SolveCandidates(board):
     """ Takes a Sudoku board (2d 9x9 list of ints with 0 as empty cell) and
     returns a board that is a 2d 9x9 list of sets.  Each set is the possible
     int values. Known values are now sets with 1 item. """
-    cand_board = [[GetCellCandidateList(board, i, j) for j in range(9)] for i in range(9)]
+    cand_board = [[GetCellCandidateSet(board, i, j) for j in range(9)] for i in range(9)]
     return cand_board
 
 
@@ -92,8 +92,8 @@ def SolveCandidatesIntersect(board, orig_cand_board):
     This prevents candidates previously removed from being added back."""
 
     def solve_cell_candidates(i, j):
-        candSet = GetCellCandidateList(board, i, j)
-        return orig_cand_board[i][j].intersection(candSet)
+        possible_candidates = GetCellCandidateSet(board, i, j)
+        return orig_cand_board[i][j].intersection(possible_candidates)
 
     return [[solve_cell_candidates(i, j) for j in range(9)] for i in range(9)]
 
@@ -135,55 +135,66 @@ def BoardSolved(board):
     return FindFirstEmptyCell(board) is None
 
 
+def FillinSingleCandidates_iterative(board, cand_board):
+    """ Fill in cells with only a single candidate iteratively until no more to fill in """
+    single_candidates = [(i, j) for i in range(9) for j in range(9) if len(cand_board[i][j]) == 1 and board[i][j] == 0]
+    if len(single_candidates) > 0:
+        for i, j in single_candidates:
+            board[i][j] = next(iter(cand_board[i][j]))
+        cand_board = SolveCandidatesIntersect(board, cand_board)
+
+        # Repeat until no changes needed
+        board, cand_board = FillinSingleCandidates_iterative(board, cand_board)
+
+    return board, cand_board
+
+
+def FillinHiddenSingles_iterative(board, cand_board):
+    """ Fill in hidden single candidates iteratively until no more to fill in """
+    hidden_singles = HiddenSingles(board, cand_board)
+    if len(hidden_singles) > 0:
+
+        for hidden_single in hidden_singles:
+            i, j, n = hidden_single.i, hidden_single.j, next(iter(hidden_single.candidates))
+            board[i][j] = n
+            cand_board = UpdateCandidates(n, i, j, cand_board)
+
+        # Repeat until no changes needed
+        board, cand_board = FillinSingleCandidates_iterative(board, cand_board)
+
+    return board, cand_board
+
+
 def SolvewBacktrack(board, initial=True):
     """ Solve the puzzle via the backtracking algorithm """
     num_solns = 0
     soln_board = None
 
+    board_copy = deepcopy(board)
+
     # First simplify the board by filling in naked and hidden singles
     if initial:
-        cand_board = SolveCandidates(board)
-        changed = True
-        while changed:
-            changed = False
-
-            # Fill in naked single candidates
-            single_candidates = [(i, j) for j in range(9) for i in range(9) if
-                                 len(cand_board[i][j]) == 1 and board[i][j] == 0]
-            if len(single_candidates) > 0:
-                changed = True
-                board_copy = deepcopy(board)
-                for i, j in single_candidates:
-                    board_copy[i][j] = next(iter(cand_board[i][j]))
-                cand_board = SolveCandidatesIntersect(board_copy, cand_board)
-
-            # Fill in hidden singles
-            values = HiddenSingles(board, cand_board)
-            if len(values) > 0:
-                changed = True
-
-                for value in values:
-                    i, j, n = value.i, value.j, next(iter(value.candidates))
-                    board[i][j] = n
-                    cand_board = UpdateCandidates(n, i, j, cand_board)
+        cand_board = SolveCandidates(board_copy)
+        board_copy, cand_board = FillinSingleCandidates_iterative(board_copy, cand_board)
+        board_copy, cand_board = FillinHiddenSingles_iterative(board_copy, cand_board)
 
     #  Do backtrack solving but use the list of candidates in each cell to reduce search depth
     #  Start by finding the first cell that has no known value, if all cells have values then board solved.
-    found_empty_cell = FindFirstEmptyCell(board)
-    if found_empty_cell:
-        i, j = found_empty_cell
-        candSet = GetCellCandidateList(board, i, j)
+    first_empty_cell = FindFirstEmptyCell(board_copy)
+    if first_empty_cell is not None:
+        i, j = first_empty_cell
+        possible_candidates = GetCellCandidateSet(board_copy, i, j)
 
-        for cand in iter(candSet):
+        for candidate in iter(possible_candidates):
             # Try solution
-            board[i][j] = cand
+            board_copy[i][j] = candidate
 
-            num_solns_loop, soln_board_loop = SolvewBacktrack(board, False)
+            num_solns_loop, soln_board_loop = SolvewBacktrack(board_copy, initial=False)
             num_solns += num_solns_loop
             if num_solns == 1 and soln_board_loop is not None:
                 soln_board = soln_board_loop
 
-            board[i][j] = 0
+            board_copy[i][j] = 0
 
         return num_solns, soln_board
     else:
