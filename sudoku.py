@@ -13,44 +13,30 @@ def CheckListForDuplicates(list_of_cells):
     return len(list_of_cells) != len(set(list_of_cells))
 
 
-def FindRowDuplicates(board):
-    """ Loop thro each row and return location of any duplicate numbers as a list of tuple coord (i,j) pairs """
+def FindUnitDuplicates(unit_list, coord_func):
+    """ Loop thro each unit (row or col etc) and return location of any duplicate numbers as a list of
+    tuple coord (i,j) pairs """
     duplicates = []
-
-    for i in range(0, 9):
-        row_i = sdc.GetRowCells(board, i)
-        for n in range(1, 10):
-            if row_i.count(n) > 1:
-                duplicates += [(i, j) for j, cell_value in enumerate(row_i) if cell_value == n]
+    for u, unit_cells in enumerate(unit_list):
+        duplicated_numbers = [n for n in range(1, 10) if unit_cells.count(n) > 1]
+        duplicates += [coord_func(u, c) for n in duplicated_numbers for c, elem in enumerate(unit_cells) if elem == n]
 
     return duplicates
+
+
+def FindRowDuplicates(board):
+    """ Loop thro each row and return location of any duplicate numbers as a list of tuple coord (i,j) pairs """
+    return FindUnitDuplicates(board, sdc.GetCellCoordsFromRowID)
 
 
 def FindColDuplicates(board):
     """ Loop thro each column and return location of any duplicate numbers as a list of tuple coord (i,j) pairs """
-    duplicates = []
-
-    for j in range(0, 9):
-        col_j = sdc.GetColCells(board, j)
-        for n in range(1, 10):
-            if col_j.count(n) > 1:
-                duplicates += [(i, j) for i, cell_value in enumerate(col_j) if cell_value == n]
-
-    return duplicates
+    return FindUnitDuplicates([sdc.GetColCells(board, j) for j in range(0, 9)], sdc.GetCellCoordsFromColID)
 
 
 def FindBlockDuplicates(board):
     """ Loop thro each block and return location of any duplicate numbers as a list of tuple coord (i,j) pairs """
-    duplicates = []
-
-    for b in range(0, 9):  # Loop thro each of the 9 3x3 blocks in the board
-        block = sdc.GetBlockCells_BlockID(board, b)
-
-        for n in range(1, 10):  # For each possible number n that could go in a cell
-            if block.count(n) > 1:
-                duplicates += [sdc.GetCellCoordsFromBlockID(b, k) for k, cell_value in enumerate(block) if cell_value == n]
-
-    return duplicates
+    return FindUnitDuplicates([sdc.GetBlockCells_BlockID(board, b) for b in range(0, 9)], sdc.GetCellCoordsFromBlockID)
 
 
 def FindDuplicates(board):
@@ -79,39 +65,21 @@ def RemoveZeros(input_list):
 def GetCellCandidateList(board, i, j):
     """ Find possible values in a cell """
 
-    block_values = set(RemoveZeros(sdc.GetBlockCells_CellID(board, i, j)))
-    row_values = set(RemoveZeros(sdc.GetRowCells(board, i)))
-    col_values = set(RemoveZeros(sdc.GetColCells(board, j)))
+    if board[i][j] == 0:
+        block_values = set(RemoveZeros(sdc.GetBlockCells_CellID(board, i, j)))
+        row_values = set(RemoveZeros(sdc.GetRowCells(board, i)))
+        col_values = set(RemoveZeros(sdc.GetColCells(board, j)))
 
-    return set(range(1, 10)) - block_values - row_values - col_values
-
-
-def FillSingleCandidates(board, cand_board):
-    """ Fills in any empty cells with single candidate
-    Copies inputs so not changed by this function."""
-    board_copy = deepcopy(board)
-    changed = False
-
-    for i in range(0, 9):
-        for j in range(0, 9):
-            if len(cand_board[i][j]) == 1 and board[i][j] == 0:
-                changed = True
-                board_copy[i][j] = next(iter(cand_board[i][j]))
-
-    return changed, board_copy, SolveCandidatesIntersect(board_copy, cand_board)
+        return set(range(1, 10)) - block_values - row_values - col_values
+    else:
+        return {board[i][j]}
 
 
 def SolveCandidates(board):
     """ Takes a Sudoku board (2d 9x9 list of ints with 0 as empty cell) and
     returns a board that is a 2d 9x9 list of sets.  Each set is the possible
     int values. Known values are now sets with 1 item. """
-    cand_board = [[{} for i in range(9)] for j in range(9)]
-    for i in range(0, 9):
-        for j in range(0, 9):
-            if board[i][j] == 0:
-                cand_board[i][j] = GetCellCandidateList(board, i, j)
-            else:
-                cand_board[i][j] = set([board[i][j]])
+    cand_board = [[GetCellCandidateList(board, i, j) for j in range(9)] for i in range(9)]
     return cand_board
 
 
@@ -122,15 +90,12 @@ def SolveCandidatesIntersect(board, orig_cand_board):
     This version compares to the previous candidates and returns only
     candidates in both sets.
     This prevents candidates previously removed from being added back."""
-    cand_board = deepcopy(orig_cand_board)
-    for i in range(0, 9):
-        for j in range(0, 9):
-            if board[i][j] == 0:
-                candSet = GetCellCandidateList(board, i, j)
-                cand_board[i][j] = cand_board[i][j].intersection(candSet)
-            else:
-                cand_board[i][j] = set([board[i][j]])
-    return cand_board
+
+    def solve_cell_candidates(i, j):
+        candSet = GetCellCandidateList(board, i, j)
+        return orig_cand_board[i][j].intersection(candSet)
+
+    return [[solve_cell_candidates(i, j) for j in range(9)] for i in range(9)]
 
 
 def UpdateCandidates(value, i, j, orig_cand_board):
@@ -159,12 +124,10 @@ def UpdateCandidates(value, i, j, orig_cand_board):
 # Solving code
 
 def FindFirstEmptyCell(board):
-    """ Find the first cell that has a unknown value """
-    for i in range(0, 9):
-        for j in range(0, 9):
-            if board[i][j] == 0:
-                return i, j
-    return None
+    """ Find the coords of first cell that has an unknown value (indicated by zero) """
+    # Define iterator that tracks across each row looking for zeroes, then find the first zero using next()
+    zero_iter = ((i, j) for i, row in enumerate(board) for j, cell_value in enumerate(row) if cell_value == 0)
+    return next(zero_iter, None)
 
 
 def BoardSolved(board):
@@ -183,10 +146,19 @@ def SolvewBacktrack(board, initial=True):
         changed = True
         while changed:
             changed = False
-            changed, board, cand_board = FillSingleCandidates(board, cand_board)
-            values = HiddenSingles(board, cand_board)
+
+            # Fill in naked single candidates
+            single_candidates = [(i, j) for j in range(9) for i in range(9) if
+                                 len(cand_board[i][j]) == 1 and board[i][j] == 0]
+            if len(single_candidates) > 0:
+                changed = True
+                board_copy = deepcopy(board)
+                for i, j in single_candidates:
+                    board_copy[i][j] = next(iter(cand_board[i][j]))
+                cand_board = SolveCandidatesIntersect(board_copy, cand_board)
 
             # Fill in hidden singles
+            values = HiddenSingles(board, cand_board)
             if len(values) > 0:
                 changed = True
 
