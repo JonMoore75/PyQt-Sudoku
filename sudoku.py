@@ -2,15 +2,9 @@ from copy import deepcopy
 import sudoku_coords as sdc
 from sudoku_pattern import HiddenSingles
 
+
 ###############################################################################
 # Board validity code
-
-
-def CheckListForDuplicates(list_of_cells):
-    """ Check if given list contains any duplicates.  Achieves this by comparing the list to a set made from the list.
-     The set contains only one of each unique value from the list.  If the list has a different length then it must
-     contain duplicates """
-    return len(list_of_cells) != len(set(list_of_cells))
 
 
 def FindUnitDuplicates(unit_list, coord_func):
@@ -24,24 +18,15 @@ def FindUnitDuplicates(unit_list, coord_func):
     return duplicates
 
 
-def FindRowDuplicates(board):
-    """ Loop thro each row and return location of any duplicate numbers as a list of tuple coord (i,j) pairs """
-    return FindUnitDuplicates(board, sdc.GetCellCoordsFromRowID)
-
-
-def FindColDuplicates(board):
-    """ Loop thro each column and return location of any duplicate numbers as a list of tuple coord (i,j) pairs """
-    return FindUnitDuplicates([sdc.GetColCells(board, j) for j in range(0, 9)], sdc.GetCellCoordsFromColID)
-
-
-def FindBlockDuplicates(board):
-    """ Loop thro each block and return location of any duplicate numbers as a list of tuple coord (i,j) pairs """
-    return FindUnitDuplicates([sdc.GetBlockCells_BlockID(board, b) for b in range(0, 9)], sdc.GetCellCoordsFromBlockID)
-
-
 def FindDuplicates(board):
     """ Find duplicate entries on any row, column or block """
-    return FindRowDuplicates(board) + FindColDuplicates(board) + FindBlockDuplicates(board)
+
+    row_duplicates = FindUnitDuplicates(board, sdc.GetCellCoordsFromRowID)
+    col_duplicates = FindUnitDuplicates([sdc.GetColCells(board, j) for j in range(0, 9)], sdc.GetCellCoordsFromColID)
+    block_duplicates = FindUnitDuplicates([sdc.GetBlockCells_BlockID(board, b) for b in range(0, 9)],
+                                          sdc.GetCellCoordsFromBlockID)
+
+    return row_duplicates + col_duplicates + block_duplicates
 
 
 def CheckValid(list_of_duplicates):
@@ -107,9 +92,9 @@ def UpdateCandidates(value, i, j, orig_cand_board):
     b = sdc.GetBlockIDFromCellCoords(i, j)
 
     # Find indices of all cells in same col, row and block as cell (i,j)
-    idx = {(i, rj) for rj in range(9)}                                       # Row
-    idx = idx.union({(ri, j) for ri in range(9)})                            # Column
-    idx = idx.union({sdc.GetCellCoordsFromBlockID(b, k) for k in range(0, 9)})   # Block
+    idx = {(i, rj) for rj in range(9)}  # Row
+    idx = idx.union({(ri, j) for ri in range(9)})  # Column
+    idx = idx.union({sdc.GetCellCoordsFromBlockID(b, k) for k in range(0, 9)})  # Block
     idx.remove((i, j))
 
     # For each of these cells remove the value as a candidate
@@ -199,6 +184,3 @@ def SolvewBacktrack(board, initial=True):
         return num_solns, soln_board
     else:
         return 1, deepcopy(board)  # Solved!
-
-
-

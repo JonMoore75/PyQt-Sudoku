@@ -8,7 +8,7 @@ import sudoku_pattern as sdp
 from SudokuModel import SudokuModel
 
 
-class CustomDialog(QDialog):
+class ImportBoardDialog(QDialog):
     def __init__(self):
         super().__init__()
 
@@ -128,7 +128,7 @@ class Controller:
 
     def ImportBoard(self):
         """ Import a string representing a sudoku board """
-        dlg = CustomDialog()
+        dlg = ImportBoardDialog()
         if not dlg.exec():
             return
 
