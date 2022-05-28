@@ -183,4 +183,4 @@ def SolvewBacktrack(board, initial=True):
 
         return num_solns, soln_board
     else:
-        return 1, deepcopy(board)  # Solved!
+        return 1, deepcopy(board_copy)  # Solved!
