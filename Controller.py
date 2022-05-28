@@ -171,8 +171,8 @@ class Controller:
     def FillinSingleCandidatesStep(self):
         """ Look for cells with only 1 candidate and fill them in.
                 Updates the candidates after finished """
-        self.ClearHighlights()
         self.model.FillinSingleCandidatesStep()
+        self.ClearHighlights()
         self.view.UpdateAllCells(self.model.GetBoard())
         self.view.UpdateAllCandidates(self.model.GetAllCands())
         self.ShowInvalidCells()
@@ -180,49 +180,49 @@ class Controller:
     def UpdatePossibleCandidates(self):
         """ Removes any candidates that are no longer valid.
         Does NOT reset candidate changes made previously """
-        self.ClearHighlights()
         self.model.UpdateCandidates()
+        self.ClearHighlights()
         self.view.UpdateAllCandidates(self.model.GetAllCands())
 
     def HighlightHiddenSingles(self):
         """ Highlight where there are hidden single candidates """
-        self.ClearHighlights()
         hidden_singles = sdp.HiddenSingles(self.model.GetBoard(), self.model.GetAllCands())
+        self.ClearHighlights()
         self.view.HighlightValues(hidden_singles)
 
     def HighlightNakedPairs(self):
         """ Highlight where there are naked pair candidates """
-        self.ClearHighlights()
         values, removals = sdp.NakedPairs(self.model.GetBoard(), self.model.GetAllCands())
 
+        self.ClearHighlights()
         self.view.HighlightValues(values)
         self.view.HighlightRemovals(removals)
 
     def HighlightPointingPairs(self):
-        self.ClearHighlights()
         values, removals = sdp.PointingPairs(self.model.GetBoard(), self.model.GetAllCands())
 
+        self.ClearHighlights()
         self.view.HighlightValues(values)
         self.view.HighlightRemovals(removals)
 
     def HighlightBoxLinePairs(self):
-        self.ClearHighlights()
         values, removals = sdp.BoxLinePairs(self.model.GetBoard(), self.model.GetAllCands())
 
+        self.ClearHighlights()
         self.view.HighlightValues(values)
         self.view.HighlightRemovals(removals)
 
     def HighlightBoxTriples(self):
-        self.ClearHighlights()
         values, removals = sdp.BoxTriples(self.model.GetBoard(), self.model.GetAllCands())
 
+        self.ClearHighlights()
         self.view.HighlightValues(values)
         self.view.HighlightRemovals(removals)
 
     def HighlightXWings(self):
-        self.ClearHighlights()
         values, removals = sdp.XWings(self.model.GetBoard(), self.model.GetAllCands())
 
+        self.ClearHighlights()
         self.view.HighlightValues(values)
         self.view.HighlightRemovals(removals)
 
@@ -230,8 +230,9 @@ class Controller:
         """ Reset the displayed candidates to those based on those that are
             valid (ie avoid duplicates). Resets any candidate changes based on other
             patterns like hidden singles etc. """
-        self.ClearHighlights()
+
         self.model.RegenCandidates()
+        self.ClearHighlights()
         self.view.UpdateAllCandidates(self.model.GetAllCands())
 
     def ClearHighlights(self):

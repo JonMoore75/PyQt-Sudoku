@@ -74,10 +74,12 @@ def FindNakedPair(board, cand_board, unit_func, coord_func):
                 for p, pair in enumerate(pairs):
                     i1, j1 = pair_loc[p]
                     if (a, b) == pair:
-                        values.append(PatternInfo(i, j, {a, b}))
-                        values.append(PatternInfo(i1, j1, {a, b}))
-                        removal_values += RemovalCandidates(cells, cands, {a, b},
+                        this_pattern = [PatternInfo(i, j, {a, b}), PatternInfo(i1, j1, {a, b})]
+                        this_removals = RemovalCandidates(cells, cands, {a, b},
                                                                 lambda k: coord_func(u, k), [(i1, j1), (i, j)])
+                        if len(this_removals):
+                            values += this_pattern
+                            removal_values += this_removals
 
                 # Remember this pair
                 pairs += [(a, b)]
@@ -122,8 +124,7 @@ def FindBoxLinePair(board, cand_board, unit_func, isRow):
                     i1, j1, i2, j2 = u, idx[0], u, idx[1]
                 else:
                     i1, j1, i2, j2 = idx[0], u, idx[1], u
-                values.append(PatternInfo(i1, j1, {n}))
-                values.append(PatternInfo(i2, j2, {n}))
+                this_pattern = [PatternInfo(i1, j1, {n}), PatternInfo(i2, j2, {n})]
 
                 # Mark candidates with value n in same block for removal
                 b = GetBlockIDFromCellCoords(i1, j1)
@@ -132,7 +133,11 @@ def FindBoxLinePair(board, cand_board, unit_func, isRow):
 
                 def LocFunc(k):
                     return GetCellCoordsFromBlockID(b, k)
-                removal_values += RemovalCandidates(rcells, rcands, {n}, LocFunc, [(i1, j1), (i2, j2)])
+                this_removals = RemovalCandidates(rcells, rcands, {n}, LocFunc, [(i1, j1), (i2, j2)])
+
+                if len(this_removals):
+                    values += this_pattern
+                    removal_values += this_removals
 
     return values, removal_values
 
@@ -166,8 +171,7 @@ def PointingPairs(board, cand_board):
                 i2, j2 = GetCellCoordsFromBlockID(b, idx[1])
 
                 if i1 == i2 or j1 == j2:
-                    values.append(PatternInfo(i1, j1, {n}))
-                    values.append(PatternInfo(i2, j2, {n}))
+                    this_pattern = [PatternInfo(i1, j1, {n}), PatternInfo(i2, j2, {n})]
 
                     # Mark candidates with value n in same row/col for removal
                     rcells = GetRowCells(board, i1) if i1 == i2 else GetColCells(board, j1)
@@ -175,7 +179,11 @@ def PointingPairs(board, cand_board):
 
                     def LocFunc(rc):
                         return (i1, rc) if i1 == i2 else (rc, j1)
-                    removal_values += RemovalCandidates(rcells, rcands, {n}, LocFunc, [(i1, j1), (i2, j2)])
+                    this_removals = RemovalCandidates(rcells, rcands, {n}, LocFunc, [(i1, j1), (i2, j2)])
+
+                    if len(this_removals):
+                        values += this_pattern
+                        removal_values += this_removals
 
     return values, removal_values
 
@@ -204,7 +212,7 @@ def FindBoxTriples(board, cand_board, unit_func, coord_func):
                     x, y, z = tripCandSet
                     trip_loc = [coord_func(u, cs + k) for k in range(0, 3)]
                     for k in range(0, 3):
-                        values.append(PatternInfo(*trip_loc[k], tripCandSet & cands[cs + k]))
+                        this_pattern = [PatternInfo(*trip_loc[k], tripCandSet & cands[cs + k])]
 
                     # Mark candidates with value n in same row/col for removal
                     rcells = unit_func(board, u)
@@ -214,8 +222,11 @@ def FindBoxTriples(board, cand_board, unit_func, coord_func):
                     bl = GetBlockIDFromCellCoords(*coord_func(u, cs))
                     rbcells = GetBlockCells_BlockID(board, bl)
                     rbcands = GetBlockCells_BlockID(cand_board, bl)
-                    removal_values += RemovalCandidates(rbcells, rbcands, {x, y, z},
+                    this_removals = RemovalCandidates(rbcells, rbcands, {x, y, z},
                                                         lambda k: GetCellCoordsFromBlockID(bl, k), trip_loc)
+                    if len(this_removals):
+                        values += this_pattern
+                        removal_values += this_removals
 
     return values, removal_values
 
@@ -230,7 +241,7 @@ def BoxTriples(board, cand_board):
 
 
 def FindXWing(board, cand_board, unit_func, coord_func):
-    values = []
+    values, removal_values = [], []
 
     # Loop through all possible numbers
     for n in range(1, 10):
@@ -250,57 +261,61 @@ def FindXWing(board, cand_board, unit_func, coord_func):
                 for pair in pair_loc:
                     u_p, idxp = pair
                     if idxp == idx:
-                        values.append(PatternInfo(*coord_func(u, idx[0]), {n}))
-                        values.append(PatternInfo(*coord_func(u, idx[1]), {n}))
-                        values.append(PatternInfo(*coord_func(u_p, idxp[0]), {n}))
-                        values.append(PatternInfo(*coord_func(u_p, idxp[1]), {n}))
+                        this_pattern = [PatternInfo(*coord_func(u, idx[0]), {n}),
+                                        PatternInfo(*coord_func(u, idx[1]), {n}),
+                                        PatternInfo(*coord_func(u_p, idxp[0]), {n}),
+                                        PatternInfo(*coord_func(u_p, idxp[1]), {n})]
+                        this_removals = XWingRemovals(board, cand_board, this_pattern)
+
+                        if len(this_removals):
+                            values += this_pattern
+                            removal_values += this_removals
+
                 pair_loc += [(u, idx)]
 
-    return values
+    return values, removal_values
 
 
-def XWingRemovals(board, cand_board, xwings):
+def XWingRemovals(board, cand_board, xwing):
     removal_values = []
-    for xwing in xwings:
-        assert (len(xwing) == 4)
-        xw1, xw2, xw3, xw4 = xwing
-        n = next(iter(xw1.candidates))
 
-        rows = list({xw1.i, xw2.i, xw3.i, xw4.i})
-        cols = list({xw1.j, xw2.j, xw3.j, xw4.j})
+    assert (len(xwing) == 4)
+    xw1, xw2, xw3, xw4 = xwing
+    n = next(iter(xw1.candidates))
 
-        for row in rows:
-            row_cells = GetRowCells(board, row)
-            row_cands = GetRowCells(cand_board, row)
+    rows = list({xw1.i, xw2.i, xw3.i, xw4.i})
+    cols = list({xw1.j, xw2.j, xw3.j, xw4.j})
 
-            for col in range(0, 9):
-                if col not in cols and row_cells[col] == 0 and n in row_cands[col]:
-                    removal_values.append(PatternInfo(row, col, {n}))
+    for row in rows:
+        row_cells = GetRowCells(board, row)
+        row_cands = GetRowCells(cand_board, row)
 
-        for col in cols:
-            col_cells = GetColCells(board, col)
-            col_cands = GetColCells(cand_board, col)
+        for col in range(0, 9):
+            if col not in cols and row_cells[col] == 0 and n in row_cands[col]:
+                removal_values.append(PatternInfo(row, col, {n}))
 
-            for row in range(0, 9):
-                if row not in rows and col_cells[row] == 0 and n in col_cands[row]:
-                    removal_values.append(PatternInfo(row, col, {n}))
+    for col in cols:
+        col_cells = GetColCells(board, col)
+        col_cands = GetColCells(cand_board, col)
+
+        for row in range(0, 9):
+            if row not in rows and col_cells[row] == 0 and n in col_cands[row]:
+                removal_values.append(PatternInfo(row, col, {n}))
 
     return removal_values
 
 
 def XWings(board, cand_board):
     # Rows
-    row_values = FindXWing(board, cand_board, GetRowCells, GetCellCoordsFromRowID)
+    values_row,  removal_values_row = FindXWing(board, cand_board, GetRowCells, GetCellCoordsFromRowID)
     # Columns
-    col_values = FindXWing(board, cand_board, GetColCells, GetCellCoordsFromColID)
+    values_col, removal_values_col = FindXWing(board, cand_board, GetColCells, GetCellCoordsFromColID)
 
-    values = row_values + col_values
+    assert(len(values_row + values_col) % 4 == 0)
+    # xwings = [values[x:x+4] for x in range(0, len(values), 4)]
+    # removal_values = XWingRemovals(board, cand_board, xwings)
 
-    assert(len(values) % 4 == 0)
-    xwings = [values[x:x+4] for x in range(0, len(values), 4)]
-    removal_values = XWingRemovals(board, cand_board, xwings)
-
-    return values, removal_values
+    return values_row + values_col, removal_values_row + removal_values_col
 
 
 def RemovalCandidates(unit_cells, candidates, values, LocFunc, exclusion_list):
