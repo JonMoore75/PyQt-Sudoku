@@ -7,7 +7,7 @@ import sudoku as sd
 from Controller import Controller
 from SudokuModel import SudokuModel
 from PyQtView import PyQtSudokuView
-from sudoku_boards import UnitTests, xwingboard
+from sudoku_boards import xwingboard
 
 
 ###############################################################################
@@ -44,7 +44,6 @@ def run_app(orig_board):
 
 
 def main():
-    UnitTests()
     sys.exit(run_app(xwingboard))
 
 

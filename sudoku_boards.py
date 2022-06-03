@@ -1,6 +1,3 @@
-import sudoku as sd
-
-
 easyboard = [
     [0, 8, 0, 0, 0, 0, 3, 5, 0],
     [5, 0, 4, 0, 8, 0, 1, 9, 0],
@@ -99,49 +96,3 @@ expertboard2 = [
 ###############################################################################
 
 
-def UnitTests():
-    print('######### Unit Tests #############')
-    testboard = [
-        [7, 8, 0, 4, 0, 0, 1, 2, 0],
-        [6, 0, 0, 0, 7, 5, 0, 0, 9],
-        [0, 0, 0, 6, 0, 1, 0, 7, 8],
-        [0, 0, 7, 0, 4, 0, 2, 6, 0],
-        [0, 0, 1, 0, 5, 0, 9, 3, 0],
-        [9, 0, 4, 0, 6, 0, 0, 0, 5],
-        [0, 7, 0, 3, 0, 0, 0, 1, 2],
-        [1, 2, 0, 0, 0, 7, 4, 0, 0],
-        [0, 4, 9, 2, 0, 6, 0, 0, 7]
-    ]
-
-    ns, sb = sd.SolvewBacktrack(testboard)
-    print('Num Solutions in Test Board, should be 1:', ns)
-
-    testboard[4][4] = 3
-    print('Check valid via Row Duplicate Test. Should be False:', sd.BoardIsValid(testboard))
-
-    testboard[4][4] = 7
-    print('Check valid via Col Duplicate Test. Should be False:', sd.BoardIsValid(testboard))
-
-    testboard[4][4] = 5
-    testboard[8][8] = 1
-    print('Check valid via Block Duplicate Test. Should be False:', sd.BoardIsValid(testboard))
-
-    ns, sb = sd.SolvewBacktrack(testboard)
-    print('Num Solutions in Invalid Test Board, should be 0:', ns)
-
-    testboard = [
-        [7, 8, 0, 4, 0, 0, 1, 2, 0],
-        [6, 0, 0, 0, 7, 5, 0, 0, 9],
-        [0, 0, 0, 6, 0, 1, 0, 7, 8],
-        [0, 0, 7, 0, 4, 0, 2, 6, 0],
-        [0, 0, 1, 0, 5, 0, 9, 3, 0],
-        [9, 0, 4, 0, 6, 0, 0, 0, 5],
-        [0, 7, 0, 3, 0, 0, 0, 1, 2],
-        [1, 2, 0, 0, 0, 0, 4, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0]
-    ]
-
-    ns, sb = sd.SolvewBacktrack(testboard)
-    print('Num Solutions in Incomplete Test Board, should be > 1:', ns)
-
-    print('######### End Unit Tests #############')
