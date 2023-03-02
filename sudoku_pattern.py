@@ -323,7 +323,7 @@ def RemovalCandidates(unit_cells, candidates, values, LocFunc, exclusion_list):
     cells           - list of ints containing the values in the cells in the given unit (row, col, block)
     candidates      - list of sets of ints representing candidates for each cell
     LocFunc         - function that translates the 0->9 index to i,j cell coords
-    values          - set of int values to be removed from this cells candidates
+    values          - set of int values to be removed from the cells candidates
     exclusion_list  - list of cells coords excluded from removal.
 
     The exclusion list is for the cells that cause the removal (ie original pointing
