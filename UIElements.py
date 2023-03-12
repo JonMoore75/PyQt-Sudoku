@@ -34,10 +34,10 @@ class Candidate(QLabel):
 
 class Cell(QLabel):
     # selected is a class to define the type of signals Cell can emit on mouse click
-    selected = Signal(object)#, int)
+    selected = Signal(object)
 
     def __init__(self, parent, i, j, value=0):
-        super(QLabel, self).__init__(Value2String(value), parent)
+        super().__init__(Value2String(value), parent)
         self.i = i
         self.j = j
 
@@ -61,8 +61,12 @@ class Cell(QLabel):
     def CandCoordFromValue(value):
         return (value - 1) // 3, (value - 1) % 3
 
-    def CreateCandidates(self, cand_set=set()):
+    def CreateCandidates(self, cand_set=None):
         """ Create grid of QLabel widgets to display the candidates """
+
+        if cand_set is None:
+            cand_set = set()
+
         for cand_value in range(1, 10):
             i, j = self.CandCoordFromValue(cand_value)
             cand_str = str(cand_value) if cand_value in cand_set else ' '
