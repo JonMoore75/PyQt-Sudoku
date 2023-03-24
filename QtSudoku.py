@@ -44,7 +44,7 @@ def run_app(orig_board):
 
 
 def main():
-    sys.exit(run_app(sb.xwingboard))
+    sys.exit(run_app(sb.medboard))
 
 
 if __name__ == "__main__":
